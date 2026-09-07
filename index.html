@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>SoulKit — 매출현황</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
@@ -145,6 +146,25 @@ select:focus { border-color: var(--gold); }
 .btn-refresh.loading svg { animation: spin .7s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
+.btn-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(34,197,94,0.08);
+  border: 1px solid rgba(34,197,94,0.25);
+  border-radius: var(--rs);
+  color: #4ade80;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  letter-spacing: .03em;
+}
+.btn-excel:hover { background: rgba(34,197,94,0.16); }
+.btn-excel svg { width: 13px; height: 13px; }
+
 .period-display {
   margin-left: auto;
   font-size: 11px;
@@ -160,7 +180,9 @@ select:focus { border-color: var(--gold); }
   box-shadow: 0 2px 12px rgba(0,0,0,0.35);
   overflow: hidden;
   position: relative;
+  margin-top: 20px;
 }
+.card:first-of-type { margin-top: 0; }
 .card::before {
   content: '';
   position: absolute;
@@ -330,9 +352,26 @@ tr.row-subtotal td.col-total .amt-main {
   gap: 14px;
   text-align: center;
 }
+.state-box-sm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  gap: 10px;
+  text-align: center;
+}
 .spinner {
   width: 28px;
   height: 28px;
+  border: 2px solid var(--bdr2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.spinner-sm {
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--bdr2);
   border-top-color: var(--gold);
   border-radius: 50%;
@@ -407,10 +446,190 @@ tr.row-subtotal td.col-total .amt-main {
   font-family: 'JetBrains Mono', monospace;
 }
 
+/* ── ANNUAL SECTION ── */
+.annual-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+  padding: 24px 20px 10px;
+  text-align: center;
+}
+.annual-hero-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+.annual-hero-value {
+  font-size: 38px;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -.04em;
+  line-height: 1.1;
+}
+.annual-hero-unit { font-size: 16px; color: var(--tx2); }
+.annual-hero-sub {
+  font-size: 12px;
+  color: var(--tx3);
+  margin-top: 2px;
+}
+
+.chart-wrap {
+  padding: 8px 20px 16px;
+  overflow-x: auto;
+}
+.chart-wrap svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  min-width: 300px;
+}
+
+/* ── TABS ── */
+.tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--bdr);
+  padding: 0 20px;
+}
+.tab-btn {
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--tx2);
+  cursor: pointer;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  background: none;
+  font-family: inherit;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab-btn:hover { color: var(--tx); }
+.tab-btn.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── PRODUCT TABLE ── */
+.prod-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.prod-table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding: 8px 16px;
+  text-align: right;
+  background: var(--sur2);
+  border-bottom: 1px solid var(--bdr);
+}
+.prod-table th:first-child { text-align: left; padding-left: 20px; }
+.prod-table td {
+  padding: 9px 16px;
+  font-size: 12px;
+  text-align: right;
+  border-bottom: 1px solid var(--bdr);
+  color: var(--tx);
+  vertical-align: middle;
+}
+.prod-table td:first-child {
+  text-align: left;
+  padding-left: 20px;
+  font-size: 11px;
+  color: var(--tx3);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  width: 32px;
+}
+.prod-table td:nth-child(2) {
+  text-align: left;
+  color: var(--tx2);
+  font-size: 12px;
+  max-width: 260px;
+}
+.prod-table td.amt-col {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--gold2);
+}
+.prod-table tr:hover td { background: rgba(255,255,255,0.02); }
+.no-data {
+  text-align: center;
+  padding: 30px 20px;
+  color: var(--tx3);
+  font-size: 12px;
+}
+
+/* ── DAILY TABLE ── */
+.daily-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.daily-table th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding: 8px 16px;
+  text-align: right;
+  background: var(--sur2);
+  border-bottom: 1px solid var(--bdr);
+  white-space: nowrap;
+}
+.daily-table th:first-child { text-align: left; padding-left: 20px; }
+.daily-table td {
+  padding: 7px 16px;
+  text-align: right;
+  border-bottom: 1px solid var(--bdr);
+  color: var(--tx);
+  vertical-align: middle;
+  font-family: 'JetBrains Mono', monospace;
+}
+.daily-table td:first-child {
+  text-align: left;
+  padding-left: 20px;
+  color: var(--tx2);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.daily-table tr.today-row td { background: rgba(245,230,200,0.04); }
+.daily-table tr:hover td { background: rgba(255,255,255,0.025); }
+
+/* ── BAR INLINE ── */
+.bar-bg {
+  display: inline-block;
+  background: var(--sur3);
+  border-radius: 2px;
+  height: 6px;
+  width: 80px;
+  vertical-align: middle;
+  overflow: hidden;
+  margin-right: 6px;
+}
+.bar-fg {
+  display: block;
+  background: var(--gold2);
+  height: 100%;
+  border-radius: 2px;
+  opacity: .7;
+}
+
 @media (max-width: 600px) {
   .summary-row { grid-template-columns: 1fr 1fr; }
   .main { padding: 18px 14px 40px; }
   .header { padding: 0 14px; }
+  .annual-hero-value { font-size: 28px; }
 }
 </style>
 </head>
@@ -436,6 +655,15 @@ tr.row-subtotal td.col-total .amt-main {
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
       </svg>
       새로고침
+    </button>
+    <button class="btn-excel" id="btnExcel" onclick="exportExcel()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <line x1="9" y1="15" x2="15" y2="15"/>
+      </svg>
+      엑셀 다운로드
     </button>
     <span class="period-display" id="periodDisplay"></span>
   </div>
@@ -464,7 +692,7 @@ tr.row-subtotal td.col-total .amt-main {
     </div>
   </div>
 
-  <!-- Main card -->
+  <!-- Main table card (채널×사업자) -->
   <div class="card" id="mainCard">
     <div id="stateBox" class="state-box">
       <div class="spinner"></div>
@@ -498,11 +726,106 @@ tr.row-subtotal td.col-total .amt-main {
     </div>
   </div>
 
+  <!-- ① 연간 누계 / 월별 추이 -->
+  <div class="card" id="annualCard">
+    <div class="card-header">
+      <span class="card-title">연간 누계 / 월별 추이</span>
+      <span class="total-badge" id="annualBadge"></span>
+    </div>
+    <div id="annualState" class="state-box-sm">
+      <div class="spinner-sm"></div>
+      <div class="state-text" style="font-size:12px">연간 데이터 로드 중...</div>
+    </div>
+    <div id="annualContent" style="display:none">
+      <div class="annual-hero">
+        <div class="annual-hero-label" id="annualHeroLabel">연초 누계</div>
+        <div class="annual-hero-value"><span id="annualTotal">—</span><span class="annual-hero-unit">원</span></div>
+        <div class="annual-hero-sub" id="annualHeroSub"></div>
+      </div>
+      <div class="chart-wrap">
+        <svg id="annualChart" viewBox="0 0 620 140" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 일별 매출 -->
+  <div class="card" id="dailyCard">
+    <div class="card-header">
+      <span class="card-title">일별 매출</span>
+      <span class="total-badge" id="dailyBadge"></span>
+    </div>
+    <div id="dailyState" class="state-box-sm">
+      <div class="spinner-sm"></div>
+      <div class="state-text" style="font-size:12px">로드 중...</div>
+    </div>
+    <div id="dailyContent" style="display:none">
+      <div class="tab-bar" id="dailyTabBar"></div>
+      <div class="chart-wrap">
+        <svg id="dailyChart" viewBox="0 0 620 100" preserveAspectRatio="xMidYMid meet"></svg>
+      </div>
+      <div class="table-wrap">
+        <table class="daily-table" id="dailyTable">
+          <thead>
+            <tr id="dailyTableHead"></tr>
+          </thead>
+          <tbody id="dailyTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 상품별 TOP -->
+  <div class="card" id="productCard">
+    <div class="card-header">
+      <span class="card-title">상품별 TOP 10</span>
+    </div>
+    <div id="productState" class="state-box-sm">
+      <div class="spinner-sm"></div>
+      <div class="state-text" style="font-size:12px">로드 중...</div>
+    </div>
+    <div id="productContent" style="display:none">
+      <div class="tab-bar" id="productTabBar"></div>
+      <div class="table-wrap">
+        <table class="prod-table" id="productTable">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>상품명</th>
+              <th>매출</th>
+              <th>수량</th>
+            </tr>
+          </thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script>
 const BIZ_LIST = ['소울스토어', '제이원투몰', '행복산업'];
 const API_BASE = 'https://n8n.wonflowai.com/webhook/soulkit-revenue-summary';
+
+// Global state
+let currentData = null;
+let annualMonthData = []; // [{month: '01', data: {...}}, ...]
+let dailyActiveBiz = '전체';
+let productActiveBiz = BIZ_LIST[0];
+
+// ── Formatters ──────────────────────────────────────────────────────────
+function fmt(n) {
+  if (!n && n !== 0) return null;
+  return Number(n).toLocaleString('ko-KR');
+}
+function fmtShort(n) {
+  if (!n && n !== 0) return '0';
+  if (n >= 100000000) return (n / 100000000).toFixed(1) + '억';
+  if (n >= 10000000) return Math.round(n / 10000000) * 10 + '만';
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + '백만';
+  if (n >= 10000) return Math.round(n / 10000) + '만';
+  return fmt(n);
+}
 
 // ── Build period selector (last 12 months) ──────────────────────────────
 function buildPeriodOptions() {
@@ -521,17 +844,22 @@ function buildPeriodOptions() {
   }
 }
 
-function fmt(n) {
-  if (!n && n !== 0) return null;
-  return Number(n).toLocaleString('ko-KR');
+// ── Fetch helper ────────────────────────────────────────────────────────
+async function fetchMonth(year, month, force = false) {
+  const url = `${API_BASE}?year=${year}&month=${month}`;
+  const res = await fetch(url, { cache: force ? 'no-store' : 'default' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  const data = Array.isArray(json) ? json[0] : json;
+  if (!data || !data['사업자별']) throw new Error('데이터 형식 오류');
+  return data;
 }
 
-// ── Render table ────────────────────────────────────────────────────────
+// ── Render main table (existing) ─────────────────────────────────────────
 function render(data) {
   const biz = data['사업자별'] || {};
   const grandTotal = data['전체합계'] ?? 0;
 
-  // Collect all channels
   const channelSet = new Set();
   BIZ_LIST.forEach(b => {
     const ch = biz[b]?.['채널별매출'] || {};
@@ -539,7 +867,6 @@ function render(data) {
   });
   const channels = [...channelSet].sort();
 
-  // Summary cards
   document.getElementById('summaryRow').style.display = '';
   document.getElementById('sumTotal').textContent = fmt(grandTotal) + '원';
   let totalOrders = 0;
@@ -552,24 +879,17 @@ function render(data) {
     document.getElementById(`sum${i}orders`).textContent = orders ? `${fmt(orders)}건` : '';
   });
   document.getElementById('sumOrders').textContent = totalOrders ? `총 ${fmt(totalOrders)}건` : '';
-
-  // Card header total
   document.getElementById('cardTotal').textContent = fmt(grandTotal) + '원';
 
-  // Table body
   const tbody = document.getElementById('tableBody');
   tbody.innerHTML = '';
 
   channels.forEach(ch => {
     const tr = document.createElement('tr');
-
-    // Channel label
     const tdLabel = document.createElement('td');
     tdLabel.textContent = ch;
     tr.appendChild(tdLabel);
-
     let rowTotal = 0;
-
     BIZ_LIST.forEach(b => {
       const td = document.createElement('td');
       const amt = biz[b]?.['채널별매출']?.[ch];
@@ -581,34 +901,24 @@ function render(data) {
       }
       tr.appendChild(td);
     });
-
-    // Row total col
     const tdTotal = document.createElement('td');
     tdTotal.className = 'col-total';
-    if (rowTotal > 0) {
-      tdTotal.innerHTML = `<div class="amt-main">${fmt(rowTotal)}원</div>`;
-    } else {
-      tdTotal.innerHTML = `<span class="amt-empty">—</span>`;
-    }
+    tdTotal.innerHTML = rowTotal > 0
+      ? `<div class="amt-main">${fmt(rowTotal)}원</div>`
+      : `<span class="amt-empty">—</span>`;
     tr.appendChild(tdTotal);
-
     tbody.appendChild(tr);
   });
 
-  // Subtotal row
   const trSub = document.createElement('tr');
   trSub.className = 'row-subtotal';
-
   const tdSubLabel = document.createElement('td');
   tdSubLabel.textContent = '사업자 합계';
   trSub.appendChild(tdSubLabel);
-
-  let subtotalCheck = 0;
   BIZ_LIST.forEach(b => {
     const info = biz[b] || {};
     const amt = info['사업자합계'] ?? 0;
     const orders = info['주문건수'] ?? 0;
-    subtotalCheck += amt;
     const td = document.createElement('td');
     if (amt > 0) {
       td.innerHTML = `<div class="amt-main">${fmt(amt)}원</div>${orders ? `<div class="amt-sub">${fmt(orders)}건</div>` : ''}`;
@@ -617,19 +927,399 @@ function render(data) {
     }
     trSub.appendChild(td);
   });
-
-  // Grand total cell (bottom-right)
   const tdGrandCell = document.createElement('td');
   tdGrandCell.className = 'col-total';
   tdGrandCell.innerHTML = `<div class="amt-main">${fmt(grandTotal)}원</div>${totalOrders ? `<div class="amt-sub">${fmt(totalOrders)}건</div>` : ''}`;
   trSub.appendChild(tdGrandCell);
   tbody.appendChild(trSub);
 
-  // Grand total footer
   document.getElementById('grandTotalValue').textContent = fmt(grandTotal);
   document.getElementById('grandTotalOrders').textContent = totalOrders ? `총 ${fmt(totalOrders)}건` : '';
 
   showTable();
+  document.getElementById('btnExcel').style.display = '';
+}
+
+// ── ① Render annual ──────────────────────────────────────────────────────
+function renderAnnual(year, endMonth) {
+  const endM = parseInt(endMonth);
+  const totals = [];
+  let ytd = 0;
+  let validMonths = 0;
+
+  for (let m = 1; m <= endM; m++) {
+    const item = annualMonthData.find(x => parseInt(x.month) === m);
+    const val = item?.data?.['전체합계'] ?? 0;
+    totals.push({ month: m, val });
+    ytd += val;
+    if (val > 0) validMonths++;
+  }
+
+  document.getElementById('annualHeroLabel').textContent = `${year}년 1월 ~ ${endM}월 누계`;
+  document.getElementById('annualTotal').textContent = fmt(ytd);
+  document.getElementById('annualHeroSub').textContent =
+    validMonths > 0 ? `월 평균 ${fmt(Math.round(ytd / validMonths))}원` : '';
+  document.getElementById('annualBadge').textContent = `YTD ${fmtShort(ytd)}원`;
+
+  // SVG bar chart
+  const svg = document.getElementById('annualChart');
+  const W = 620, H = 140, topPad = 30, botPad = 30;
+  const chartH = H - topPad - botPad;
+  const N = totals.length;
+  const maxVal = Math.max(...totals.map(t => t.val), 1);
+  const slotW = W / N;
+  const barW = Math.max(slotW - 8, 4);
+
+  let svgContent = '';
+  totals.forEach((t, i) => {
+    const bH = (t.val / maxVal) * chartH;
+    const bX = i * slotW + (slotW - barW) / 2;
+    const bY = topPad + chartH - bH;
+    const isCurrent = (t.month === endM);
+    const fill = isCurrent ? '#f0d9a8' : 'rgba(245,230,200,0.30)';
+    const labelY = topPad + chartH + 18;
+
+    svgContent += `<rect x="${bX.toFixed(1)}" y="${bY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(bH, 0).toFixed(1)}" rx="3" fill="${fill}"/>`;
+    // Month label
+    svgContent += `<text x="${(bX + barW/2).toFixed(1)}" y="${labelY}" text-anchor="middle" fill="#666" font-size="10" font-family="'JetBrains Mono', monospace">${t.month}월</text>`;
+    // Value label above bar (only if bar is tall enough)
+    if (t.val > 0) {
+      const vY = Math.max(bY - 4, 14);
+      svgContent += `<text x="${(bX + barW/2).toFixed(1)}" y="${vY}" text-anchor="middle" fill="${isCurrent ? '#f5e6c8' : '#555'}" font-size="9" font-family="'JetBrains Mono', monospace">${fmtShort(t.val)}</text>`;
+    }
+  });
+
+  svg.innerHTML = svgContent;
+  document.getElementById('annualState').style.display = 'none';
+  document.getElementById('annualContent').style.display = '';
+}
+
+// ── ② Render daily ───────────────────────────────────────────────────────
+function renderDaily(data) {
+  const biz = data['사업자별'] || {};
+
+  // Build merged daily map: date -> {biz: amount, ...}
+  const dateMap = {};
+  BIZ_LIST.forEach(b => {
+    const daily = biz[b]?.['일별매출'] || {};
+    Object.entries(daily).forEach(([date, amt]) => {
+      if (!dateMap[date]) dateMap[date] = {};
+      dateMap[date][b] = amt;
+    });
+  });
+
+  const dates = Object.keys(dateMap).sort();
+  if (dates.length === 0) {
+    document.getElementById('dailyState').innerHTML =
+      '<div class="state-text" style="font-size:12px;padding:20px">일별 매출 데이터가 없습니다</div>';
+    return;
+  }
+
+  // Total per date (aggregate all biz)
+  const aggTotals = dates.map(d => BIZ_LIST.reduce((s, b) => s + (dateMap[d][b] || 0), 0));
+  const grandDaily = aggTotals.reduce((a, b) => a + b, 0);
+  document.getElementById('dailyBadge').textContent = fmt(grandDaily) + '원';
+
+  // Build tab bar
+  const tabBar = document.getElementById('dailyTabBar');
+  tabBar.innerHTML = '';
+  const tabs = ['전체', ...BIZ_LIST];
+  tabs.forEach(t => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (t === dailyActiveBiz ? ' active' : '');
+    btn.textContent = t;
+    btn.onclick = () => switchDailyTab(t, data);
+    tabBar.appendChild(btn);
+  });
+
+  drawDailyChart(dates, dateMap, dailyActiveBiz);
+  drawDailyTable(dates, dateMap, dailyActiveBiz);
+
+  document.getElementById('dailyState').style.display = 'none';
+  document.getElementById('dailyContent').style.display = '';
+}
+
+function switchDailyTab(biz, data) {
+  dailyActiveBiz = biz;
+  document.querySelectorAll('#dailyTabBar .tab-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === biz);
+  });
+  const bizObj = (data || currentData)['사업자별'] || {};
+  const dateMap = {};
+  BIZ_LIST.forEach(b => {
+    const daily = bizObj[b]?.['일별매출'] || {};
+    Object.entries(daily).forEach(([date, amt]) => {
+      if (!dateMap[date]) dateMap[date] = {};
+      dateMap[date][b] = amt;
+    });
+  });
+  const dates = Object.keys(dateMap).sort();
+  drawDailyChart(dates, dateMap, biz);
+  drawDailyTable(dates, dateMap, biz);
+}
+
+function getDailyValues(dates, dateMap, biz) {
+  if (biz === '전체') {
+    return dates.map(d => BIZ_LIST.reduce((s, b) => s + (dateMap[d][b] || 0), 0));
+  }
+  return dates.map(d => dateMap[d][biz] || 0);
+}
+
+function drawDailyChart(dates, dateMap, biz) {
+  const vals = getDailyValues(dates, dateMap, biz);
+  const maxVal = Math.max(...vals, 1);
+  const N = dates.length;
+  const W = 620, H = 100, topPad = 20, botPad = 20;
+  const chartH = H - topPad - botPad;
+  const slotW = W / N;
+  const barW = Math.max(slotW - 3, 1.5);
+
+  const today = new Date().toISOString().slice(0, 10);
+  let content = '';
+  dates.forEach((d, i) => {
+    const bH = (vals[i] / maxVal) * chartH;
+    const bX = i * slotW + (slotW - barW) / 2;
+    const bY = topPad + chartH - bH;
+    const isToday = d === today;
+    const fill = isToday ? '#f0d9a8' : 'rgba(245,230,200,0.35)';
+    content += `<rect x="${bX.toFixed(1)}" y="${bY.toFixed(1)}" width="${barW.toFixed(1)}" height="${Math.max(bH, 0).toFixed(1)}" rx="1.5" fill="${fill}">
+      <title>${d}: ${fmt(vals[i])}원</title></rect>`;
+    // Day label only if slots wide enough
+    if (slotW > 14) {
+      const dayNum = parseInt(d.slice(-2));
+      content += `<text x="${(bX + barW/2).toFixed(1)}" y="${H - 4}" text-anchor="middle" fill="#555" font-size="8" font-family="'JetBrains Mono', monospace">${dayNum}</text>`;
+    }
+  });
+  document.getElementById('dailyChart').innerHTML = content;
+}
+
+function drawDailyTable(dates, dateMap, biz) {
+  const thead = document.getElementById('dailyTableHead');
+  const tbody = document.getElementById('dailyTableBody');
+  const today = new Date().toISOString().slice(0, 10);
+
+  thead.innerHTML = '';
+  tbody.innerHTML = '';
+
+  const isTotal = biz === '전체';
+  const cols = isTotal ? ['날짜', ...BIZ_LIST, '합계'] : ['날짜', biz];
+
+  cols.forEach((c, i) => {
+    const th = document.createElement('th');
+    th.textContent = c;
+    if (i > 0) th.style.cssText = 'text-align:right';
+    thead.appendChild(th);
+  });
+
+  let tableTotal = 0;
+  dates.forEach(d => {
+    const vals = isTotal
+      ? BIZ_LIST.map(b => dateMap[d][b] || 0)
+      : [dateMap[d][biz] || 0];
+    const rowSum = vals.reduce((a, b) => a + b, 0);
+    if (rowSum === 0) return; // skip zero days
+    tableTotal += rowSum;
+
+    const tr = document.createElement('tr');
+    if (d === today) tr.className = 'today-row';
+    // Date cell
+    const tdDate = document.createElement('td');
+    tdDate.textContent = d.slice(5); // MM-DD
+    tr.appendChild(tdDate);
+
+    if (isTotal) {
+      vals.forEach(v => {
+        const td = document.createElement('td');
+        td.textContent = v > 0 ? fmt(v) + '원' : '—';
+        if (v === 0) td.style.color = 'var(--tx3)';
+        tr.appendChild(td);
+      });
+      const tdSum = document.createElement('td');
+      tdSum.style.cssText = 'color:var(--gold2);font-weight:600';
+      tdSum.textContent = fmt(rowSum) + '원';
+      tr.appendChild(tdSum);
+    } else {
+      const td = document.createElement('td');
+      td.textContent = vals[0] > 0 ? fmt(vals[0]) + '원' : '—';
+      tr.appendChild(td);
+    }
+    tbody.appendChild(tr);
+  });
+
+  // Total footer row
+  const trFoot = document.createElement('tr');
+  trFoot.style.cssText = 'background:var(--sur2); font-weight:600';
+  const tdFootLabel = document.createElement('td');
+  tdFootLabel.textContent = '합계';
+  tdFootLabel.style.cssText = 'color:var(--tx2);font-weight:700';
+  trFoot.appendChild(tdFootLabel);
+  if (isTotal) {
+    BIZ_LIST.forEach(b => {
+      const bTotal = dates.reduce((s, d) => s + (dateMap[d][b] || 0), 0);
+      const td = document.createElement('td');
+      td.textContent = bTotal > 0 ? fmt(bTotal) + '원' : '—';
+      td.style.color = 'var(--gold)';
+      trFoot.appendChild(td);
+    });
+    const tdFT = document.createElement('td');
+    tdFT.textContent = fmt(tableTotal) + '원';
+    tdFT.style.cssText = 'color:var(--gold2);font-weight:700';
+    trFoot.appendChild(tdFT);
+  } else {
+    const bTotal = dates.reduce((s, d) => s + (dateMap[d][biz] || 0), 0);
+    const td = document.createElement('td');
+    td.textContent = fmt(bTotal) + '원';
+    td.style.color = 'var(--gold2)';
+    trFoot.appendChild(td);
+  }
+  tbody.appendChild(trFoot);
+}
+
+// ── ③ Render product TOP ────────────────────────────────────────────────
+function renderProductTop(data) {
+  const biz = data['사업자별'] || {};
+
+  // Check any biz has product data
+  const hasData = BIZ_LIST.some(b => (biz[b]?.['상품별매출'] || []).length > 0);
+  if (!hasData) {
+    document.getElementById('productState').innerHTML =
+      '<div class="state-text" style="font-size:12px;padding:20px">상품별 매출 데이터가 없습니다</div>';
+    return;
+  }
+
+  const tabBar = document.getElementById('productTabBar');
+  tabBar.innerHTML = '';
+  BIZ_LIST.forEach(b => {
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn' + (b === productActiveBiz ? ' active' : '');
+    btn.textContent = b;
+    btn.onclick = () => switchProductTab(b, data);
+    tabBar.appendChild(btn);
+  });
+
+  drawProductTable(productActiveBiz, data);
+  document.getElementById('productState').style.display = 'none';
+  document.getElementById('productContent').style.display = '';
+}
+
+function switchProductTab(biz, data) {
+  productActiveBiz = biz;
+  document.querySelectorAll('#productTabBar .tab-btn').forEach(b => {
+    b.classList.toggle('active', b.textContent === biz);
+  });
+  drawProductTable(biz, data || currentData);
+}
+
+function drawProductTable(biz, data) {
+  const tbody = document.getElementById('productTableBody');
+  tbody.innerHTML = '';
+  const products = (data['사업자별']?.[biz]?.['상품별매출'] || []).slice(0, 10);
+  const maxAmt = products.length > 0 ? (products[0]['매출'] || 0) : 1;
+
+  if (products.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" class="no-data">${biz} 상품 데이터가 없습니다</td></tr>`;
+    return;
+  }
+
+  products.forEach((p, i) => {
+    const tr = document.createElement('tr');
+    const amt = p['매출'] || 0;
+    const qty = p['수량'] || 0;
+    const barPct = maxAmt > 0 ? Math.round((amt / maxAmt) * 100) : 0;
+
+    tr.innerHTML = `
+      <td>${i + 1}</td>
+      <td>${escHtml(p['상품명'] || '—')}</td>
+      <td class="amt-col">
+        <span class="bar-bg"><span class="bar-fg" style="width:${barPct}%"></span></span>
+        ${fmt(amt)}원
+      </td>
+      <td style="color:var(--tx2)">${qty > 0 ? fmt(qty) + '개' : '—'}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── ④ Excel export ───────────────────────────────────────────────────────
+function exportExcel() {
+  if (!currentData || typeof XLSX === 'undefined') return;
+
+  const period = document.getElementById('selPeriod').value;
+  const [year, month] = period.split('-');
+  const biz = currentData['사업자별'] || {};
+
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: 채널별 매출
+  const channelSet = new Set();
+  BIZ_LIST.forEach(b => Object.keys(biz[b]?.['채널별매출'] || {}).forEach(c => channelSet.add(c)));
+  const channels = [...channelSet].sort();
+
+  const s1Header = ['채널', ...BIZ_LIST, '합계'];
+  const s1Rows = [s1Header];
+  channels.forEach(ch => {
+    let rowSum = 0;
+    const row = [ch];
+    BIZ_LIST.forEach(b => {
+      const v = biz[b]?.['채널별매출']?.[ch] ?? 0;
+      rowSum += v;
+      row.push(v);
+    });
+    row.push(rowSum);
+    s1Rows.push(row);
+  });
+  // Subtotal row
+  const subRow = ['사업자 합계'];
+  let gtotal = 0;
+  BIZ_LIST.forEach(b => {
+    const v = biz[b]?.['사업자합계'] ?? 0;
+    gtotal += v;
+    subRow.push(v);
+  });
+  subRow.push(gtotal);
+  s1Rows.push(subRow);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s1Rows), '채널별매출');
+
+  // Sheet 2: 일별 매출
+  const dateMap = {};
+  BIZ_LIST.forEach(b => {
+    const daily = biz[b]?.['일별매출'] || {};
+    Object.entries(daily).forEach(([date, amt]) => {
+      if (!dateMap[date]) dateMap[date] = {};
+      dateMap[date][b] = amt;
+    });
+  });
+  const dates = Object.keys(dateMap).sort();
+  const s2Header = ['날짜', ...BIZ_LIST, '합계'];
+  const s2Rows = [s2Header];
+  dates.forEach(d => {
+    const row = [d];
+    let rowSum = 0;
+    BIZ_LIST.forEach(b => {
+      const v = dateMap[d][b] || 0;
+      rowSum += v;
+      row.push(v);
+    });
+    row.push(rowSum);
+    s2Rows.push(row);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s2Rows), '일별매출');
+
+  // Sheet 3: 상품별매출 (all biz combined)
+  const s3Header = ['사업자', '순위', '상품명', '매출', '수량'];
+  const s3Rows = [s3Header];
+  BIZ_LIST.forEach(b => {
+    const prods = biz[b]?.['상품별매출'] || [];
+    prods.slice(0, 10).forEach((p, i) => {
+      s3Rows.push([b, i + 1, p['상품명'] || '', p['매출'] || 0, p['수량'] || 0]);
+    });
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s3Rows), '상품별TOP10');
+
+  XLSX.writeFile(wb, `soulkit-매출현황-${year}-${month}.xlsx`);
 }
 
 // ── State helpers ────────────────────────────────────────────────────────
@@ -640,6 +1330,7 @@ function showLoading() {
   document.getElementById('stateBox').style.display = '';
   document.getElementById('tableWrap').style.display = 'none';
   document.getElementById('summaryRow').style.display = 'none';
+  document.getElementById('btnExcel').style.display = 'none';
 }
 function showError(msg) {
   document.getElementById('stateBox').innerHTML = `
@@ -660,31 +1351,69 @@ function showTable() {
   document.getElementById('tableWrap').style.display = '';
 }
 
+function showAnnualLoading() {
+  document.getElementById('annualState').innerHTML = `
+    <div class="spinner-sm"></div>
+    <div class="state-text" style="font-size:12px">연간 데이터 로드 중...</div>`;
+  document.getElementById('annualState').style.display = '';
+  document.getElementById('annualContent').style.display = 'none';
+  document.getElementById('annualBadge').textContent = '';
+}
+
+function showSubLoading(stateId, contentId, text) {
+  const el = document.getElementById(stateId);
+  el.innerHTML = `<div class="spinner-sm"></div><div class="state-text" style="font-size:12px">${text}</div>`;
+  el.style.display = '';
+  document.getElementById(contentId).style.display = 'none';
+}
+
 // ── Load ────────────────────────────────────────────────────────────────
 async function loadData(force = false) {
   const period = document.getElementById('selPeriod').value;
   const [year, month] = period.split('-');
 
   document.getElementById('periodDisplay').textContent = `${year}.${month}`;
+  document.getElementById('btnRefresh').classList.add('loading');
 
-  const btn = document.getElementById('btnRefresh');
-  btn.classList.add('loading');
   showLoading();
+  showAnnualLoading();
+  showSubLoading('dailyState', 'dailyContent', '로드 중...');
+  showSubLoading('productState', 'productContent', '로드 중...');
 
-  const url = `${API_BASE}?year=${year}&month=${month}`;
-
+  // Load current month
   try {
-    const res = await fetch(url, { cache: force ? 'no-store' : 'default' });
-    if (!res.ok) throw new Error(`서버 오류 (${res.status} ${res.statusText})`);
-    const json = await res.json();
-    const data = Array.isArray(json) ? json[0] : json;
-    if (!data || !data['사업자별']) throw new Error('응답 데이터 형식이 올바르지 않습니다.');
+    const data = await fetchMonth(year, month, force);
+    currentData = data;
     render(data);
+    renderDaily(data);
+    renderProductTop(data);
   } catch (e) {
     console.error(e);
     showError(`데이터를 불러오지 못했습니다.<br><small style="opacity:.7">${e.message}</small>`);
+    document.getElementById('dailyState').innerHTML =
+      '<div class="state-text" style="font-size:12px;padding:16px">데이터 로드 실패</div>';
+    document.getElementById('productState').innerHTML =
+      '<div class="state-text" style="font-size:12px;padding:16px">데이터 로드 실패</div>';
   } finally {
-    btn.classList.remove('loading');
+    document.getElementById('btnRefresh').classList.remove('loading');
+  }
+
+  // Load annual data (Jan ~ selectedMonth) in parallel
+  try {
+    const endM = parseInt(month);
+    const monthNums = Array.from({ length: endM }, (_, i) => i + 1);
+    const results = await Promise.allSettled(
+      monthNums.map(m => fetchMonth(year, String(m).padStart(2, '0'), force))
+    );
+    annualMonthData = results.map((r, i) => ({
+      month: String(i + 1).padStart(2, '0'),
+      data: r.status === 'fulfilled' ? r.value : null,
+    }));
+    renderAnnual(year, month);
+  } catch (e) {
+    console.error('Annual load error:', e);
+    document.getElementById('annualState').innerHTML =
+      `<div class="error-box" style="max-width:320px">연간 데이터를 불러오지 못했습니다</div>`;
   }
 }
 
