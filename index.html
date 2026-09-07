@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SoulKit — 매출현황</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --bg: #141414;
+  --sur: #1e1e1e;
+  --sur2: #252525;
+  --sur3: #2e2e2e;
+  --bdr: #333;
+  --bdr2: #444;
+  --tx: #f0ede8;
+  --tx2: #999;
+  --tx3: #666;
+  --gold: #f5e6c8;
+  --gold2: #f0d9a8;
+  --gold-bg: rgba(245,230,200,0.10);
+  --gold-bdr: rgba(245,230,200,0.28);
+  --red: #ef4444;
+  --rl: rgba(239,68,68,0.10);
+  --rb: rgba(239,68,68,0.3);
+  --r: 10px;
+  --rs: 7px;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: var(--bg);
+  color: var(--tx);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* ── HEADER ── */
+.header {
+  height: 52px;
+  background: var(--sur);
+  border-bottom: 1px solid var(--bdr);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.3px;
+}
+.header-title span { color: var(--gold); }
+.header-badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  background: var(--sur2);
+  border: 1px solid var(--bdr);
+  border-radius: 20px;
+  padding: 2px 8px;
+}
+
+/* ── MAIN ── */
+.main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 28px 24px 60px;
+}
+
+/* ── TOOLBAR ── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+.toolbar-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  white-space: nowrap;
+}
+.select-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+select {
+  appearance: none;
+  background: var(--sur2);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--rs);
+  color: var(--tx);
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 7px 32px 7px 12px;
+  outline: none;
+  cursor: pointer;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23999' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  transition: border-color .15s;
+}
+select:focus { border-color: var(--gold); }
+.toolbar-divider {
+  width: 1px;
+  height: 20px;
+  background: var(--bdr);
+  flex-shrink: 0;
+}
+.btn-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: var(--gold-bg);
+  border: 1px solid var(--gold-bdr);
+  border-radius: var(--rs);
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+  letter-spacing: .03em;
+}
+.btn-refresh:hover { background: rgba(245,230,200,0.18); }
+.btn-refresh svg { width: 13px; height: 13px; }
+.btn-refresh.loading svg { animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.period-display {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--tx3);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── CARD ── */
+.card {
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.35);
+  overflow: hidden;
+  position: relative;
+}
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent 0%, var(--gold-bdr) 40%, var(--gold2) 60%, transparent 100%);
+  opacity: .6;
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--bdr);
+}
+.card-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+.total-badge {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -.02em;
+}
+
+/* ── TABLE ── */
+.table-wrap {
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  padding: 10px 16px;
+  text-align: right;
+  background: var(--sur2);
+  border-bottom: 1px solid var(--bdr);
+  white-space: nowrap;
+}
+th:first-child {
+  text-align: left;
+  padding-left: 20px;
+}
+th.col-total {
+  color: var(--gold);
+  border-left: 1px solid var(--bdr2);
+}
+td {
+  padding: 11px 16px;
+  text-align: right;
+  border-bottom: 1px solid var(--bdr);
+  font-size: 13px;
+  color: var(--tx);
+  vertical-align: middle;
+}
+td:first-child {
+  text-align: left;
+  padding-left: 20px;
+  color: var(--tx2);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+td.col-total {
+  border-left: 1px solid var(--bdr2);
+  color: var(--gold2);
+  font-weight: 600;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+tr:hover td { background: rgba(255,255,255,0.02); }
+
+/* AMOUNT CELL */
+.amt-main {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 500;
+}
+.amt-sub {
+  font-size: 10px;
+  color: var(--tx3);
+  margin-top: 1px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.amt-empty {
+  color: var(--bdr2);
+  font-size: 12px;
+}
+
+/* SUBTOTAL ROW */
+tr.row-subtotal td {
+  background: var(--sur2);
+  border-top: 1px solid var(--bdr2);
+  border-bottom: none;
+}
+tr.row-subtotal td:first-child {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tx2);
+}
+tr.row-subtotal .amt-main {
+  color: var(--gold);
+  font-size: 13px;
+}
+tr.row-subtotal td.col-total .amt-main {
+  color: var(--gold2);
+  font-size: 14px;
+}
+
+/* GRAND TOTAL CELL */
+.grand-total-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--bdr2);
+  background: var(--sur2);
+}
+.grand-total-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--tx3);
+}
+.grand-total-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -.03em;
+}
+.grand-total-unit {
+  font-size: 11px;
+  color: var(--tx3);
+  margin-left: -4px;
+}
+.grand-total-orders {
+  font-size: 11px;
+  color: var(--tx3);
+  padding-left: 10px;
+  border-left: 1px solid var(--bdr);
+  margin-left: 4px;
+}
+
+/* ── STATES ── */
+.state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  gap: 14px;
+  text-align: center;
+}
+.spinner {
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--bdr2);
+  border-top-color: var(--gold);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+.state-text {
+  font-size: 13px;
+  color: var(--tx2);
+}
+.error-box {
+  background: var(--rl);
+  border: 1px solid var(--rb);
+  border-radius: var(--rs);
+  padding: 12px 16px;
+  color: var(--red);
+  font-size: 12px;
+  max-width: 400px;
+}
+.btn-retry {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 16px;
+  background: var(--sur2);
+  border: 1px solid var(--bdr2);
+  border-radius: var(--rs);
+  color: var(--tx2);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all .15s;
+}
+.btn-retry:hover { color: var(--tx); border-color: var(--bdr); }
+
+/* ── SUMMARY CARDS ── */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.summary-card {
+  background: var(--sur);
+  border: 1px solid var(--bdr);
+  border-radius: var(--r);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  padding: 14px 16px;
+}
+.summary-card-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--tx3);
+  margin-bottom: 6px;
+}
+.summary-card-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--gold);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: -.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.summary-card-orders {
+  font-size: 11px;
+  color: var(--tx3);
+  margin-top: 3px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+@media (max-width: 600px) {
+  .summary-row { grid-template-columns: 1fr 1fr; }
+  .main { padding: 18px 14px 40px; }
+  .header { padding: 0 14px; }
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-brand">
+    <div class="header-title">Soul<span>Kit</span></div>
+    <span class="header-badge">매출현황</span>
+  </div>
+</header>
+
+<main class="main">
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span class="toolbar-label">기간</span>
+    <select id="selPeriod" onchange="loadData()"></select>
+    <div class="toolbar-divider"></div>
+    <button class="btn-refresh" id="btnRefresh" onclick="loadData(true)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      새로고침
+    </button>
+    <span class="period-display" id="periodDisplay"></span>
+  </div>
+
+  <!-- Summary cards -->
+  <div class="summary-row" id="summaryRow" style="display:none">
+    <div class="summary-card">
+      <div class="summary-card-label">전체 매출</div>
+      <div class="summary-card-value" id="sumTotal">—</div>
+      <div class="summary-card-orders" id="sumOrders"></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-label">소울스토어</div>
+      <div class="summary-card-value" id="sum0">—</div>
+      <div class="summary-card-orders" id="sum0orders"></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-label">제이원투몰</div>
+      <div class="summary-card-value" id="sum1">—</div>
+      <div class="summary-card-orders" id="sum1orders"></div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-card-label">행복산업</div>
+      <div class="summary-card-value" id="sum2">—</div>
+      <div class="summary-card-orders" id="sum2orders"></div>
+    </div>
+  </div>
+
+  <!-- Main card -->
+  <div class="card" id="mainCard">
+    <div id="stateBox" class="state-box">
+      <div class="spinner"></div>
+      <div class="state-text">데이터를 불러오는 중...</div>
+    </div>
+    <div id="tableWrap" style="display:none">
+      <div class="card-header">
+        <span class="card-title">채널별 매출 내역</span>
+        <span class="total-badge" id="cardTotal"></span>
+      </div>
+      <div class="table-wrap">
+        <table id="revenueTable">
+          <thead>
+            <tr>
+              <th>채널</th>
+              <th>소울스토어</th>
+              <th>제이원투몰</th>
+              <th>행복산업</th>
+              <th class="col-total">합계</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody"></tbody>
+        </table>
+      </div>
+      <div class="grand-total-wrap">
+        <span class="grand-total-label">전체 합계</span>
+        <span class="grand-total-value" id="grandTotalValue">—</span>
+        <span class="grand-total-unit">원</span>
+        <span class="grand-total-orders" id="grandTotalOrders"></span>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const BIZ_LIST = ['소울스토어', '제이원투몰', '행복산업'];
+const API_BASE = 'https://n8n.wonflowai.com/webhook/soulkit-revenue-summary';
+
+// ── Build period selector (last 12 months) ──────────────────────────────
+function buildPeriodOptions() {
+  const sel = document.getElementById('selPeriod');
+  const now = new Date();
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const val = `${y}-${m}`;
+    const label = `${y}년 ${parseInt(m)}월`;
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = label;
+    sel.appendChild(opt);
+  }
+}
+
+function fmt(n) {
+  if (!n && n !== 0) return null;
+  return Number(n).toLocaleString('ko-KR');
+}
+
+// ── Render table ────────────────────────────────────────────────────────
+function render(data) {
+  const biz = data['사업자별'] || {};
+  const grandTotal = data['전체합계'] ?? 0;
+
+  // Collect all channels
+  const channelSet = new Set();
+  BIZ_LIST.forEach(b => {
+    const ch = biz[b]?.['채널별매출'] || {};
+    Object.keys(ch).forEach(c => channelSet.add(c));
+  });
+  const channels = [...channelSet].sort();
+
+  // Summary cards
+  document.getElementById('summaryRow').style.display = '';
+  document.getElementById('sumTotal').textContent = fmt(grandTotal) + '원';
+  let totalOrders = 0;
+  BIZ_LIST.forEach((b, i) => {
+    const info = biz[b] || {};
+    const amt = info['사업자합계'] ?? 0;
+    const orders = info['주문건수'] ?? 0;
+    totalOrders += orders;
+    document.getElementById(`sum${i}`).textContent = fmt(amt) + '원';
+    document.getElementById(`sum${i}orders`).textContent = orders ? `${fmt(orders)}건` : '';
+  });
+  document.getElementById('sumOrders').textContent = totalOrders ? `총 ${fmt(totalOrders)}건` : '';
+
+  // Card header total
+  document.getElementById('cardTotal').textContent = fmt(grandTotal) + '원';
+
+  // Table body
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+
+  channels.forEach(ch => {
+    const tr = document.createElement('tr');
+
+    // Channel label
+    const tdLabel = document.createElement('td');
+    tdLabel.textContent = ch;
+    tr.appendChild(tdLabel);
+
+    let rowTotal = 0;
+
+    BIZ_LIST.forEach(b => {
+      const td = document.createElement('td');
+      const amt = biz[b]?.['채널별매출']?.[ch];
+      if (amt != null && amt !== 0) {
+        rowTotal += amt;
+        td.innerHTML = `<div class="amt-main">${fmt(amt)}원</div>`;
+      } else {
+        td.innerHTML = `<span class="amt-empty">—</span>`;
+      }
+      tr.appendChild(td);
+    });
+
+    // Row total col
+    const tdTotal = document.createElement('td');
+    tdTotal.className = 'col-total';
+    if (rowTotal > 0) {
+      tdTotal.innerHTML = `<div class="amt-main">${fmt(rowTotal)}원</div>`;
+    } else {
+      tdTotal.innerHTML = `<span class="amt-empty">—</span>`;
+    }
+    tr.appendChild(tdTotal);
+
+    tbody.appendChild(tr);
+  });
+
+  // Subtotal row
+  const trSub = document.createElement('tr');
+  trSub.className = 'row-subtotal';
+
+  const tdSubLabel = document.createElement('td');
+  tdSubLabel.textContent = '사업자 합계';
+  trSub.appendChild(tdSubLabel);
+
+  let subtotalCheck = 0;
+  BIZ_LIST.forEach(b => {
+    const info = biz[b] || {};
+    const amt = info['사업자합계'] ?? 0;
+    const orders = info['주문건수'] ?? 0;
+    subtotalCheck += amt;
+    const td = document.createElement('td');
+    if (amt > 0) {
+      td.innerHTML = `<div class="amt-main">${fmt(amt)}원</div>${orders ? `<div class="amt-sub">${fmt(orders)}건</div>` : ''}`;
+    } else {
+      td.innerHTML = `<span class="amt-empty">—</span>`;
+    }
+    trSub.appendChild(td);
+  });
+
+  // Grand total cell (bottom-right)
+  const tdGrandCell = document.createElement('td');
+  tdGrandCell.className = 'col-total';
+  tdGrandCell.innerHTML = `<div class="amt-main">${fmt(grandTotal)}원</div>${totalOrders ? `<div class="amt-sub">${fmt(totalOrders)}건</div>` : ''}`;
+  trSub.appendChild(tdGrandCell);
+  tbody.appendChild(trSub);
+
+  // Grand total footer
+  document.getElementById('grandTotalValue').textContent = fmt(grandTotal);
+  document.getElementById('grandTotalOrders').textContent = totalOrders ? `총 ${fmt(totalOrders)}건` : '';
+
+  showTable();
+}
+
+// ── State helpers ────────────────────────────────────────────────────────
+function showLoading() {
+  document.getElementById('stateBox').innerHTML = `
+    <div class="spinner"></div>
+    <div class="state-text">데이터를 불러오는 중...</div>`;
+  document.getElementById('stateBox').style.display = '';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('summaryRow').style.display = 'none';
+}
+function showError(msg) {
+  document.getElementById('stateBox').innerHTML = `
+    <div class="error-box">${msg}</div>
+    <button class="btn-retry" onclick="loadData(true)">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M23 4v6h-6M1 20v-6h6"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+      다시 시도
+    </button>`;
+  document.getElementById('stateBox').style.display = '';
+  document.getElementById('tableWrap').style.display = 'none';
+  document.getElementById('summaryRow').style.display = 'none';
+}
+function showTable() {
+  document.getElementById('stateBox').style.display = 'none';
+  document.getElementById('tableWrap').style.display = '';
+}
+
+// ── Load ────────────────────────────────────────────────────────────────
+async function loadData(force = false) {
+  const period = document.getElementById('selPeriod').value;
+  const [year, month] = period.split('-');
+
+  document.getElementById('periodDisplay').textContent = `${year}.${month}`;
+
+  const btn = document.getElementById('btnRefresh');
+  btn.classList.add('loading');
+  showLoading();
+
+  const url = `${API_BASE}?year=${year}&month=${month}`;
+
+  try {
+    const res = await fetch(url, { cache: force ? 'no-store' : 'default' });
+    if (!res.ok) throw new Error(`서버 오류 (${res.status} ${res.statusText})`);
+    const json = await res.json();
+    const data = Array.isArray(json) ? json[0] : json;
+    if (!data || !data['사업자별']) throw new Error('응답 데이터 형식이 올바르지 않습니다.');
+    render(data);
+  } catch (e) {
+    console.error(e);
+    showError(`데이터를 불러오지 못했습니다.<br><small style="opacity:.7">${e.message}</small>`);
+  } finally {
+    btn.classList.remove('loading');
+  }
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────
+buildPeriodOptions();
+loadData();
+</script>
+</body>
+</html>
