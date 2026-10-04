@@ -626,7 +626,19 @@ tr.row-subtotal td.col-total .amt-main {
 }
 
 @media (max-width: 600px) {
+  /* FIX 1: Summary cards — 전체 매출 full width, 제이원투몰 + 행복산업 as 2 columns below */
   .summary-row { grid-template-columns: 1fr 1fr; }
+  .summary-card:first-child { grid-column: 1 / -1; }
+
+  /* FIX 2: Amount cells — prevent 원 from wrapping, reduce padding */
+  td { padding: 8px 10px; white-space: nowrap; }
+  td:first-child { padding-left: 12px; }
+  th { padding: 8px 10px; }
+  th:first-child { padding-left: 12px; }
+
+  /* FIX 3: Bar chart labels — minimum 10px font size on mobile */
+  #annualChart text, #dailyChart text { font-size: 10px !important; }
+
   .main { padding: 18px 14px 40px; }
   .header { padding: 0 14px; }
   .annual-hero-value { font-size: 28px; }
