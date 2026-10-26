@@ -919,7 +919,7 @@ body.embed .header { display:none; }
     <div class="card">
       <div class="card-header"><span class="card-title">출고 기준 매출 (주문배송 → 매일 17시 자동)</span><span class="total-badge" id="dailyRunAt"></span></div>
       <p class="pnote">송장이 나간(출고된) 상품만 매출로 잡고, 출고 전 취소는 자동으로 빠집니다. 출고 후 취소·반품·환불은 처리된 날짜 기준으로 차감합니다.</p>
-      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">출고 매출</th><th class="num">과세</th><th class="num">면세</th><th class="num">클레임 차감</th><th class="num">순매출</th></tr></thead><tbody id="shipBody"></tbody></table></div>
+      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">출고 매출</th><th class="num">과세</th><th class="num">면세</th><th class="num">클레임 차감</th><th class="num">직접 입력 손실</th><th class="num">순매출</th></tr></thead><tbody id="shipBody"></tbody></table></div>
       <div id="shipProducts"></div>
     </div>
     <div class="card">
@@ -1064,15 +1064,17 @@ const SETTLE_API = 'https://n8n.wonflowai.com/webhook/';
 let SETTLE_ITEMS = [];
 let DAILY = null;  // 출고 기준 매출 (매일 17시 자동 기록)
 async function loadDaily(month) { try { DAILY = await fetch(SETTLE_API + 'caos-daily-get?month=' + month, { cache: 'no-store' }).then(r => r.json()); } catch (_) { DAILY = null; } }
+const manualLoss = b => { const it = stItem(b, 'manual', 'claims'); return it && it.summary ? { amt: it.summary.total || 0, n: it.summary.count || 0 } : { amt: 0, n: 0 }; };
 function renderShip() {
   const body = document.getElementById('shipBody'); if (!body) return;
   const B = (DAILY && DAILY.biz) || {}; const at = DAILY && DAILY.lastRun ? DAILY.lastRun.at : '';
   document.getElementById('dailyRunAt').textContent = at ? '마지막 기록 ' + at.slice(5, 16) : '기록 없음';
   const T = { sales: 0, TAX: 0, FREE: 0, claim: 0 };
-  const rows = BIZ_LIST.map(b => { const o = B[b]; if (!o) return `<tr><td>${escHtml(b)}</td><td class="num" colspan="5"><span class="muted">이 달 출고 기록 없음</span></td></tr>`;
+  T.loss = 0;
+  const rows = BIZ_LIST.map(b => { const o = B[b], ml = manualLoss(b); T.loss += ml.amt; if (!o) return `<tr><td>${escHtml(b)}</td><td class="num" colspan="6"><span class="muted">이 달 출고 기록 없음</span></td></tr>`;
     T.sales += o.sales; T.TAX += o.tax.TAX || 0; T.FREE += o.tax.FREE || 0; T.claim += o.claim;
-    return `<tr><td>${escHtml(b)}<div class="muted" style="font-size:11px">${o.lines}건 · ${Object.keys(o.byMarket).join('·')}</div></td><td class="num">${fmt(o.sales)}</td><td class="num">${fmt(o.tax.TAX || 0)}</td><td class="num">${fmt(o.tax.FREE || 0)}</td><td class="num">${o.claim ? '-' + fmt(o.claim) + `<div class="muted" style="font-size:11px">${o.claimN}건</div>` : '0'}</td><td class="num"><b>${fmt(o.sales - o.claim)}</b></td></tr>`; });
-  if (BIZ_LIST.length > 1) rows.push(`<tr><td><b>합계</b></td><td class="num"><b>${fmt(T.sales)}</b></td><td class="num">${fmt(T.TAX)}</td><td class="num">${fmt(T.FREE)}</td><td class="num">${T.claim ? '-' + fmt(T.claim) : '0'}</td><td class="num"><b>${fmt(T.sales - T.claim)}</b></td></tr>`);
+    return `<tr><td>${escHtml(b)}<div class="muted" style="font-size:11px">${o.lines}건 · ${Object.keys(o.byMarket).join('·')}</div></td><td class="num">${fmt(o.sales)}</td><td class="num">${fmt(o.tax.TAX || 0)}</td><td class="num">${fmt(o.tax.FREE || 0)}</td><td class="num">${o.claim ? '-' + fmt(o.claim) + `<div class="muted" style="font-size:11px">${o.claimN}건</div>` : '0'}</td><td class="num" title="주문배송 → 클레임관리 → 손실·차감 직접 입력">${ml.amt ? '-' + fmt(ml.amt) + `<div class="muted" style="font-size:11px">${ml.n}건</div>` : '0'}</td><td class="num"><b>${fmt(o.sales - o.claim - ml.amt)}</b></td></tr>`; });
+  if (BIZ_LIST.length > 1) rows.push(`<tr><td><b>합계</b></td><td class="num"><b>${fmt(T.sales)}</b></td><td class="num">${fmt(T.TAX)}</td><td class="num">${fmt(T.FREE)}</td><td class="num">${T.claim ? '-' + fmt(T.claim) : '0'}</td><td class="num">${T.loss ? '-' + fmt(T.loss) : '0'}</td><td class="num"><b>${fmt(T.sales - T.claim - T.loss)}</b></td></tr>`);
   body.innerHTML = rows.join('');
   const prods = []; BIZ_LIST.forEach(b => (B[b]?.byProduct || []).forEach(p => prods.push(Object.assign({ b }, p))));
   prods.sort((a, c) => c.amt - a.amt);
@@ -1170,6 +1172,7 @@ function renderSettle() {
 function bizCost(b) {  // 사업자별 올린 자료 합계
   const r = { settle: 0, fee: 0, ads: 0, free: 0, plats: [], cost: 0, costN: 0 };
   const pu = stItem(b, 'domeggook', 'purchase'); if (pu && pu.summary) { r.cost += pu.summary.cost || 0; r.costN += pu.summary.orders || 0; }
+  r.loss = manualLoss(b).amt;
   PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { r.settle += it.summary.settle || 0; r.fee += it.summary.fee || 0; r.free += it.summary.tax?.FREE?.sales || 0; r.plats.push(pf.label || pf.m); }
     const ad = stItem(b, pf.k, 'ads'); if (ad && ad.value) r.ads += Math.round(ad.value / 1.1); });
   return r;
@@ -1181,10 +1184,10 @@ function renderProfit() {
   const T = { gross: 0, fee: 0, ads: 0, profit: 0, any: false };
   const row = (name, gross, c, last) => `<tr><td>${last ? '<b>합계</b>' : escHtml(name)}${!last && c.plats.length ? `<div class="muted" style="font-size:11px">${escHtml(c.plats.join('·'))} 자료</div>` : ''}</td><td class="num">${wonCell(gross)}</td>
     <td class="num">${c.plats.length ? fmt(Math.round(c.fee)) : pend}</td><td class="num">${c.cost ? fmt(Math.round(c.cost)) : '0'}<div class="muted" style="font-size:11px">도매꾹 ${c.costN}건 · 거래처 매입 전</div></td><td class="num">${c.ads ? fmt(c.ads) : (c.plats.length ? '0' : pend)}</td><td class="num">${pend}</td>
-    <td class="num">${c.plats.length ? `<b>${fmt(Math.round(c.settle - c.ads - c.cost))}</b><div class="muted" style="font-size:11px">거래처 매입 반영 전</div>` : pend}</td></tr>`;
-  const agg = { settle: 0, fee: 0, ads: 0, plats: [], cost: 0, costN: 0 };
+    <td class="num">${c.plats.length ? `<b>${fmt(Math.round(c.settle - c.ads - c.cost - (c.loss || 0)))}</b><div class="muted" style="font-size:11px">${c.loss ? '손실 ' + fmt(c.loss) + ' 차감 · ' : ''}거래처 매입 반영 전</div>` : pend}</td></tr>`;
+  const agg = { settle: 0, fee: 0, ads: 0, plats: [], cost: 0, costN: 0, loss: 0 };
   body.innerHTML = BIZ_LIST.map(b => { const v = biz[b]?.['사업자합계'] ?? null; T.gross += Number(v) || 0; const c = bizCost(b);
-    agg.settle += c.settle; agg.fee += c.fee; agg.ads += c.ads; agg.cost += c.cost; agg.costN += c.costN; if (c.plats.length) agg.plats.push(b); return row(b, v, c); }).join('') + row('합계', T.gross, agg, true);
+    agg.settle += c.settle; agg.fee += c.fee; agg.ads += c.ads; agg.cost += c.cost; agg.costN += c.costN; agg.loss += c.loss || 0; if (c.plats.length) agg.plats.push(b); return row(b, v, c); }).join('') + row('합계', T.gross, agg, true);
 }
 function taxRows(list) {  // 면세(쿠팡 등 올린 자료의 FREE 판매액)는 부가세 계산에서 뺌
   const biz = (currentData && currentData['사업자별']) || {};
@@ -1267,6 +1270,9 @@ function exportTax(target) {
   const s5 = [['사업자', '구매처', '주문번호', '구매일시', '시장', '상품번호', '상품명', '수량', '상품금액', '결제금액(택배비 포함)', '상태']];
   list.forEach(b => { const pu = stItem(b, 'domeggook', 'purchase'); (pu?.orders || []).forEach(o => s5.push([b, '도매꾹(위탁)', o[0], o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8]])); });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s5), '매입내역');
+  const s6 = [['사업자', '날짜', '유형', '마켓', '주문번호', '상품명', '수량', '차감 금액', '메모']];
+  list.forEach(b => { const it = stItem(b, 'manual', 'claims'); (it?.orders || []).forEach(x => s6.push([b, x.date, x.type, x.market, x.orderNo, x.product, x.qty, -(Number(x.amount) || 0), x.memo])); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s6), '손실·차감');
   const s3 = [['사업자', '마켓', '신용카드', '현금영수증', '기타', '비고']];
   list.forEach(b => Object.keys(biz[b]?.['채널별매출'] || {}).forEach(ch => s3.push([b, ch, '', '', '', '마켓 정산 연결 후 채움(판매자센터 부가세 신고자료 기준)'])));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s3), '결제수단구분');
