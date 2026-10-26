@@ -666,6 +666,29 @@ body.embed .header { display:none; }
 .kpi { display:inline-flex; align-items:baseline; gap:6px; padding:6px 12px; border:1px solid var(--bdr); border-left:3px solid var(--bc, var(--gold)); border-radius:var(--rs); background:var(--sur); font-size:12px; color:var(--tx2); }
 .kpi b { color:var(--tx); font-family:'JetBrains Mono',monospace; font-size:13px; }
 .kpi small { color:var(--tx3); font-size:11px; }
+.guide-btn { margin-left:10px; padding:7px 14px; border-radius:var(--rs); border:1px solid var(--gold-bdr); background:var(--gold-bg); color:var(--gold); font:inherit; font-size:12.5px; font-weight:500; cursor:pointer; }
+
+.guide-wrap { position:fixed; inset:0; z-index:100; }
+.guide-dim { position:absolute; inset:0; background:rgba(0,0,0,.55); opacity:0; transition:opacity .2s; }
+.guide { position:absolute; left:50%; top:0; width:min(920px, calc(100% - 32px)); max-height:min(80vh, 760px); transform:translate(-50%,-100%); transition:transform .25s ease; background:var(--sur); border:1px solid var(--gold-bdr); border-top:0; border-radius:0 0 14px 14px; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,.5); }
+.guide-wrap.show .guide { transform:translate(-50%,0); }
+.guide-wrap.show .guide-dim { opacity:1; }
+.guide-head { display:flex; align-items:center; gap:12px; padding:14px 18px; border-bottom:1px solid var(--bdr); }
+.guide-head b { font-size:14px; } .guide-head .muted { font-size:11.5px; }
+.guide-x { margin-left:auto; background:none; border:1px solid var(--bdr2); color:var(--tx2); border-radius:var(--rs); width:30px; height:30px; cursor:pointer; }
+.guide-common { padding:10px 18px; border-bottom:1px solid var(--bdr); background:var(--sur2); }
+.guide-common ul { padding-left:18px; font-size:12.5px; color:var(--tx2); line-height:1.8; }
+.guide-common b { color:var(--tx); font-weight:500; } .guide-common code { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--gold); }
+.guide-list { overflow-y:auto; padding:12px 18px 18px; display:flex; flex-direction:column; gap:6px; }
+.g-plat { border:1px solid var(--bdr); border-radius:var(--rs); }
+.g-plat.open { border-color:var(--gold-bdr); }
+.g-head { width:100%; display:flex; align-items:center; gap:10px; padding:10px 14px; background:none; border:0; color:var(--tx); font:inherit; font-size:13px; cursor:pointer; text-align:left; }
+.g-head .chev { color:var(--tx3); width:10px; } .g-head .muted { font-size:11.5px; margin-left:auto; }
+.g-body { padding:0 14px 12px; display:flex; flex-direction:column; gap:6px; }
+.g-row { display:grid; grid-template-columns:150px 1fr; gap:12px; padding:8px 10px; background:var(--sur2); border-radius:var(--rs); font-size:12.5px; }
+.g-t { color:var(--gold); font-weight:500; } .g-p { color:var(--tx); line-height:1.6; }
+.chk { font-size:10.5px; color:#fbbf24; border:1px solid rgba(251,191,36,.4); border-radius:999px; padding:0 6px; margin-left:4px; white-space:nowrap; }
+@media (max-width:600px){ .g-row { grid-template-columns:1fr; gap:2px; } }
 .plats { display:flex; flex-direction:column; gap:6px; }
 .plat { border:1px solid var(--bdr); border-radius:var(--rs); background:var(--sur); }
 .plat.open { border-color:var(--bc); }
@@ -767,6 +790,7 @@ body.embed .header { display:none; }
       <span class="kpi" style="--bc:#fca5a5">행복산업 <b id="sum1">—</b><small id="sum1orders"></small></span>
     </div>
     <span class="period-display" id="periodDisplay"></span>
+    <button class="guide-btn" id="btnGuide" type="button" aria-haspopup="dialog">📎 별첨 · 자료 받는 법</button>
   </div>
   <div class="grid3">
     <div class="col col-left">
@@ -924,6 +948,14 @@ body.embed .header { display:none; }
     </div></aside>
   </div>
 </main>
+<div class="guide-wrap" id="guideWrap" hidden>
+  <div class="guide-dim" data-close></div>
+  <section class="guide" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="guide-head"><b id="guideTitle">📎 플랫폼별 정산 자료 받는 법</b><span class="muted" id="guideUpd"></span><button type="button" class="guide-x" data-close aria-label="닫기">✕</button></div>
+    <div class="guide-common" id="guideCommon"></div>
+    <div class="guide-list" id="guideList"></div>
+  </section>
+</div>
 
 <script>
 const BIZ_ALL = ['제이원투몰', '행복산업'];
@@ -957,6 +989,63 @@ const PLATFORMS = [
   { k:'lotteon', m:'롯데ON', where:'판매자센터 → 정산', files:[['settle','정산내역','정산 → 정산내역'],['vat','부가세 신고자료','정산 → 부가세'],['ads','광고비','광고 → 보고서',1]] },
   { k:'toss', m:'토스쇼핑', where:'토스쇼핑 파트너센터 → 정산', files:[['settle','정산내역','정산 → 정산내역'],['vat','부가세 신고자료','정산 → 부가세'],['ads','광고비','광고 → 보고서',1]] },
 ];
+// ── 별첨: 자료 받는 법 (바뀌면 여기만 고치면 됨) ──
+const GUIDE_UPDATED = '2026-10-26';
+const GUIDE_COMMON = [
+  '매달 초에 <b>지난달 1일 ~ 말일</b>로 기간을 맞춰 받습니다.',
+  '두 사업자(제이원투몰·행복산업) 경로는 같고, <b>로그인 계정만 사업자별로</b> 다릅니다. 받은 파일은 오른쪽 패널의 <b>같은 사업자 · 같은 플랫폼 칸</b>에 올립니다.',
+  '파일 이름 앞에 사업자를 붙여 두면 헷갈리지 않습니다. 예) <code>행복산업_쿠팡_매출내역_2026-10.xlsx</code>',
+  '<span class="chk">확인 필요</span> 표시는 아직 실제 화면으로 확인 전인 경로입니다. 처음 받으실 때 실제 메뉴와 다르면 알려 주세요.',
+];
+const GUIDE = [
+  { k:'coupang', m:'쿠팡', site:'쿠팡 Wing (wing.coupang.com)', items:[
+    ['매출내역', '쿠팡 Wing 로그인 → 정산 → 매출내역 → 기간 설정 → 엑셀 다운로드'],
+    ['정산 현황', '쿠팡 Wing 로그인 → 정산 → 정산 현황 → 해당 월 선택 → 엑셀 다운로드'],
+    ['부가세 신고내역', '쿠팡 Wing 로그인 → 정산 → 부가세 신고내역 → 월별 조회 → 기간 설정 → 다운로드'],
+    ['광고보고서 (선택)', '쿠팡 광고센터 로그인 → 보고서 → 기간 설정 → 다운로드', 1],
+    ['로켓그로스 정산현황 (선택)', '쿠팡 Wing 로그인 → 정산 → 로켓그로스 정산현황 → 엑셀 다운로드 (로켓그로스 이용 시만)'],
+  ]},
+  { k:'naver', m:'스마트스토어', site:'스마트스토어센터 (sell.smartstore.naver.com)', items:[
+    ['정산내역(건별)', '스마트스토어센터 로그인 → 정산관리 → 정산 내역 → 건별 정산 → 기간 설정 → 엑셀 다운로드', 1],
+    ['부가세 신고내역', '스마트스토어센터 로그인 → 정산관리 → 부가세신고 내역 → 기간 설정 → 월별 내역 다운로드'],
+    ['광고비 (선택)', '네이버 검색광고 로그인 → 보고서 → 기간 설정 → 다운로드', 1],
+  ]},
+  { k:'gmarket', m:'G마켓', site:'ESM PLUS (esmplus.com) · G마켓 계정', items:[
+    ['판매대금 정산내역', 'ESM PLUS 로그인 → 정산관리 → 판매대금 정산 내역 → 사이트 G마켓 선택 → 기간 설정 → 엑셀 다운로드', 1],
+    ['부가세 신고내역', 'ESM PLUS 로그인 → 정산관리 → 부가세 신고내역 → 사이트 G마켓 선택 → 기간 설정 → 엑셀 다운로드'],
+    ['광고비 (선택)', 'ESM PLUS → 광고 → 보고서 → 기간 설정 → 다운로드', 1],
+  ]},
+  { k:'auction', m:'옥션', site:'ESM PLUS (esmplus.com) · 옥션 계정', items:[
+    ['판매대금 정산내역', 'ESM PLUS 로그인 → 정산관리 → 판매대금 정산 내역 → 사이트 옥션 선택 → 기간 설정 → 엑셀 다운로드', 1],
+    ['부가세 신고내역', 'ESM PLUS 로그인 → 정산관리 → 부가세 신고내역 → 사이트 옥션 선택 → 기간 설정 → 엑셀 다운로드'],
+    ['광고비 (선택)', 'ESM PLUS → 광고 → 보고서 → 기간 설정 → 다운로드', 1],
+  ]},
+  { k:'11st', m:'11번가', site:'11번가 셀러오피스 (soffice.11st.co.kr)', items:[
+    ['정산내역', '셀러오피스 로그인 → 정산관리 → 정산내역 조회 → 기간 설정 → 엑셀 다운로드', 1],
+    ['부가세 신고내역', '셀러오피스 로그인 → 정산관리 → 부가세신고내역 → 기간 설정 → 엑셀 다운로드'],
+    ['광고비 (선택)', '셀러오피스 → 광고 → 보고서 → 다운로드', 1],
+  ]},
+  { k:'lotteon', m:'롯데ON', site:'롯데ON 스토어센터 (store.lotteon.com)', items:[
+    ['정산내역', '스토어센터 로그인 → 정산관리 → 정산내역 → 기간 설정 → 엑셀 다운로드', 1],
+    ['부가세 신고자료', '스토어센터 로그인 → 정산관리 → 부가세 신고 자료 → 기간 설정 → 엑셀 다운로드', 1],
+    ['광고비 (선택)', '스토어센터 → 광고 → 보고서 → 다운로드', 1],
+  ]},
+  { k:'toss', m:'토스쇼핑', site:'토스쇼핑 파트너스 (shopping-seller.toss.im)', items:[
+    ['정산내역', '토스쇼핑 파트너스 로그인 → 정산 내역 → 기간 설정 → 다운로드', 1],
+    ['부가세 참고자료', '토스쇼핑 파트너스 로그인 → 정산 → 부가세 참고자료(구매확정일 기준) → 다운로드', 1],
+    ['광고비 (선택)', '토스쇼핑 파트너스 → 광고 → 광고비 정산 → 다운로드', 1],
+  ]},
+];
+let GUIDE_OPEN = 'coupang';
+function renderGuide() {
+  document.getElementById('guideUpd').textContent = '마지막 수정 ' + GUIDE_UPDATED;
+  document.getElementById('guideCommon').innerHTML = '<ul>' + GUIDE_COMMON.map(x => `<li>${x}</li>`).join('') + '</ul>';
+  document.getElementById('guideList').innerHTML = GUIDE.map(g => { const open = GUIDE_OPEN === g.k;
+    return `<div class="g-plat${open ? ' open' : ''}"><button type="button" class="g-head" data-g="${g.k}" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><b>${escHtml(g.m)}</b><span class="muted">${escHtml(g.site)}</span></button>
+      ${open ? `<div class="g-body">${g.items.map(([t, path, unsure]) => `<div class="g-row"><span class="g-t">${escHtml(t)}</span><span class="g-p">${escHtml(path)}${unsure ? ' <span class="chk">확인 필요</span>' : ''}</span></div>`).join('')}</div>` : ''}</div>`; }).join('');
+  document.querySelectorAll('.g-head').forEach(h => h.onclick = () => { GUIDE_OPEN = GUIDE_OPEN === h.dataset.g ? null : h.dataset.g; renderGuide(); });
+}
+function openGuide(on) { const w = document.getElementById('guideWrap'); w.hidden = !on; if (on) { renderGuide(); requestAnimationFrame(() => w.classList.add('show')); } else w.classList.remove('show'); }
 const UPLOADED = {};   // "사업자|플랫폼|자료" → 파일명 (이번 화면에서만, 저장 연결은 다음 단계)
 const OPEN_PLAT = {};  // 사업자별로 펼쳐 둔 플랫폼
 function channelTotal(ch) {
@@ -1697,6 +1786,9 @@ async function loadData(force = false) {
 
 // ── Init ─────────────────────────────────────────────────────────────────
 buildPeriodOptions();
+document.getElementById('btnGuide').onclick = () => openGuide(true);
+document.querySelectorAll('#guideWrap [data-close]').forEach(x => x.onclick = () => openGuide(false));
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !document.getElementById('guideWrap').hidden) openGuide(false); });
 try { if (window.self !== window.top) document.body.classList.add('embed'); } catch (_) { document.body.classList.add('embed'); }
 window.addEventListener('dragover', e => e.preventDefault());
 window.addEventListener('drop', e => e.preventDefault());
