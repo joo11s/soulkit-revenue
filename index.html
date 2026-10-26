@@ -732,7 +732,12 @@ body.embed .header { display:none; }
 .side-btn { width:100%; padding:9px 12px; border-radius:var(--rs); border:1px solid var(--bdr2); background:var(--sur2); color:var(--tx); font:inherit; font-size:12.5px; cursor:pointer; }
 .side-btn:hover { border-color:var(--gold-bdr); }
 .side-btn.primary { background:var(--gold-bg); border-color:var(--gold-bdr); color:var(--gold); font-weight:500; margin-top:4px; }
-.prod-table td.pname { max-width:0; width:55%; }
+.prod-table td.pname { max-width:0; width:auto; }
+.prod-table td.amt-col, .prod-table td:last-child { white-space:nowrap; width:1%; }
+.prod-table td.amt-col .bar-bg { display:inline-block; vertical-align:middle; margin-right:8px; width:48px; }
+.prod-table th:nth-child(2) { text-align:left; }
+.mk-chips { display:flex; gap:4px; margin-top:3px; flex-wrap:wrap; }
+.mk-chips i { font-style:normal; font-size:10.5px; color:var(--tx3); border:1px solid var(--bdr2); border-radius:999px; padding:0 6px; line-height:16px; }
 .prod-table td.pname span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
 .prod-table td.pname.open span { white-space:normal; }
 .summary-row { grid-template-columns: repeat(3, minmax(0,1fr)); max-width:none; }
@@ -1728,6 +1733,12 @@ function switchProductTab(biz, data) {
   drawProductTable(biz, data || currentData);
 }
 
+function mkChips(biz, name) {  // 출고 기록에서 이 상품이 팔린 마켓
+  const list = DAILY && DAILY.biz && DAILY.biz[biz] ? DAILY.biz[biz].byProduct : null; if (!list) return '';
+  const hit = list.find(x => x.name === name) || list.find(x => name && x.name.startsWith(String(name).slice(0, 15)));
+  if (!hit) return '';
+  return '<div class="mk-chips">' + Object.entries(hit.market).sort((a, b) => b[1] - a[1]).map(([m, q]) => `<i>${escHtml(m)} ${q}</i>`).join('') + '</div>';
+}
 function drawProductTable(biz, data) {
   const tbody = document.getElementById('productTableBody');
   tbody.innerHTML = '';
@@ -1747,7 +1758,7 @@ function drawProductTable(biz, data) {
 
     tr.innerHTML = `
       <td>${i + 1}</td>
-      <td class="pname" title="${escHtml(p['상품명'] || '')}" onclick="this.classList.toggle('open')"><span>${escHtml(p['상품명'] || '—')}</span></td>
+      <td class="pname" title="${escHtml(p['상품명'] || '')}" onclick="this.classList.toggle('open')"><span>${escHtml(p['상품명'] || '—')}</span>${mkChips(biz, p['상품명'])}</td>
       <td class="amt-col">
         <span class="bar-bg"><span class="bar-fg" style="width:${barPct}%"></span></span>
         ${fmt(amt)}원
