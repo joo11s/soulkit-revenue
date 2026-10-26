@@ -85,7 +85,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   flex-wrap: wrap;
 }
 .toolbar-label {
@@ -644,12 +644,29 @@ tr.row-subtotal td.col-total .amt-main {
   .annual-hero-value { font-size: 28px; }
 }
 /* ── CAOS 경영지원 페이지 탭 ── */
-.main.wide { max-width: 1880px; padding: 20px 24px 40px; }
-.grid3 { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr) minmax(280px,0.62fr); gap:18px; align-items:start; }
-.col { min-width:0; }
-.col .card { margin-bottom:16px; }
-.col-title { font-size:12px; letter-spacing:.08em; color:var(--tx3); margin:0 0 10px 2px; font-weight:500; }
-.col-right { position:sticky; top:68px; max-height:calc(100vh - 84px); overflow-y:auto; padding-right:2px; }
+.main.wide { max-width:none; padding:14px 18px 14px; }
+.grid3 { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1.2fr) minmax(300px,0.62fr); gap:14px; align-items:stretch; }
+.col { min-width:0; display:flex; flex-direction:column; background:var(--sur); border:1px solid var(--bdr); border-radius:var(--r); overflow:hidden; }
+.col-title { flex:none; padding:13px 16px; border-bottom:1px solid var(--bdr); font-size:13.5px; font-weight:700; color:var(--tx); letter-spacing:0; }
+.col-body { flex:1; min-height:0; overflow-y:auto; padding:12px; }
+.col-body .card { margin-bottom:12px; background:var(--sur2); }
+.col-body .card:last-child { margin-bottom:0; }
+.col-right .col-body { display:flex; flex-direction:column; gap:12px; }
+.col-right .col-body .card { margin-bottom:0; }
+@media (min-width: 1181px) {
+  html, body { height:100%; }
+  body { overflow:hidden; display:flex; flex-direction:column; }
+  .main.wide { flex:1; min-height:0; display:flex; flex-direction:column; width:100%; }
+  .main.wide .toolbar { flex:none; }
+  .grid3 { flex:1; min-height:0; }
+}
+body.embed .header { display:none; }
+@media (max-width:1180px){ body.embed .col-right { top:8px; max-height:calc(100vh - 16px); } }
+.kpis { display:flex; gap:8px; flex-wrap:wrap; margin-left:10px; }
+.kpi { display:inline-flex; align-items:baseline; gap:6px; padding:6px 12px; border:1px solid var(--bdr); border-left:3px solid var(--bc, var(--gold)); border-radius:var(--rs); background:var(--sur); font-size:12px; color:var(--tx2); }
+.kpi b { color:var(--tx); font-family:'JetBrains Mono',monospace; font-size:13px; }
+.kpi small { color:var(--tx3); font-size:11px; }
+.upmini.drag { border-color:var(--gold); background:var(--gold-bg); }
 .side-body { padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px; }
 .side-label { font-size:11px; color:var(--tx3); margin-top:6px; }
 .biz-card { border-left:3px solid var(--bc); }
@@ -661,7 +678,9 @@ tr.row-subtotal td.col-total .amt-main {
 .upmini { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; background:var(--sur2); border:1px solid var(--bdr); border-radius:var(--rs); cursor:pointer; }
 .upmini span { display:flex; flex-direction:column; min-width:0; }
 .upmini b { font-weight:500; font-size:12.5px; } .upmini small { color:var(--tx3); font-size:11px; }
-.upmini .pick { font-style:normal; font-size:11.5px; padding:4px 10px; border-radius:999px; border:1px solid var(--bdr2); color:var(--tx2); white-space:nowrap; }
+.upmini { flex-direction:column; align-items:stretch !important; }
+.upmini span { flex-direction:row !important; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.upmini .pick { font-style:normal; font-size:11.5px; padding:7px 10px; border-radius:var(--rs); border:1px dashed var(--bdr2); color:var(--tx3); text-align:center; }
 .upmini:hover .pick { border-color:var(--gold-bdr); color:var(--gold); }
 .upmini.done .pick { color:#86efac; border-color:rgba(134,239,172,.35); }
 .col-mid .ptable th, .col-mid .ptable td { padding:9px 10px; font-size:12.5px; }
@@ -675,7 +694,7 @@ tr.row-subtotal td.col-total .amt-main {
 .prod-table td.pname span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; cursor:pointer; }
 .prod-table td.pname.open span { white-space:normal; }
 .summary-row { grid-template-columns: repeat(3, minmax(0,1fr)); max-width:none; }
-@media (max-width: 1180px) { .grid3 { grid-template-columns: minmax(0,1fr) minmax(280px,340px); } .col-left, .col-mid { grid-column:1; } .col-right { grid-column:2; grid-row:1 / span 2; } }
+@media (max-width: 1180px) { .grid3 { grid-template-columns: minmax(0,1fr) minmax(280px,340px); } .col-left, .col-mid { grid-column:1; } .col-right { grid-column:2; grid-row:1 / span 2; align-self:start; position:sticky; top:62px; max-height:calc(100vh - 76px); } .col-body { overflow:visible; } .col-right .col-body { overflow-y:auto; } }
 @media (max-width: 760px) { .grid3 { grid-template-columns: 1fr; } .col-right { grid-column:1; grid-row:auto; position:static; max-height:none; } }
 .ptabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:16px; }
 .ptab { background:var(--sur); border:1px solid var(--bdr); color:var(--tx2); border-radius:999px; padding:7px 16px; font:inherit; font-size:13px; cursor:pointer; }
@@ -731,31 +750,17 @@ tr.row-subtotal td.col-total .amt-main {
       새로고침
     </button>
     <span id="btnExcel" hidden></span>
+    <div class="kpis" id="summaryRow" style="display:none">
+      <span class="kpi total">전체 <b id="sumTotal">—</b><small id="sumOrders"></small></span>
+      <span class="kpi" style="--bc:#7dd3fc">제이원투몰 <b id="sum0">—</b><small id="sum0orders"></small></span>
+      <span class="kpi" style="--bc:#fca5a5">행복산업 <b id="sum1">—</b><small id="sum1orders"></small></span>
+    </div>
     <span class="period-display" id="periodDisplay"></span>
   </div>
-  <!-- Summary cards -->
-  <div class="summary-row" id="summaryRow" style="display:none">
-    <div class="summary-card">
-      <div class="summary-card-label">전체 매출</div>
-      <div class="summary-card-value" id="sumTotal">—</div>
-      <div class="summary-card-orders" id="sumOrders"></div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-card-label">제이원투몰</div>
-      <div class="summary-card-value" id="sum0">—</div>
-      <div class="summary-card-orders" id="sum0orders"></div>
-    </div>
-    <div class="summary-card">
-      <div class="summary-card-label">행복산업</div>
-      <div class="summary-card-value" id="sum1">—</div>
-      <div class="summary-card-orders" id="sum1orders"></div>
-    </div>
-  </div>
-
-
   <div class="grid3">
     <div class="col col-left">
       <div class="col-title">매출</div>
+      <div class="col-body">
   <!-- Main table card (채널×사업자) -->
   <div class="card" id="mainCard">
     <div id="stateBox" class="state-box">
@@ -864,9 +869,10 @@ tr.row-subtotal td.col-total .amt-main {
     </div>
   </div>
 
-    </div>
+    </div></div>
     <div class="col col-mid">
       <div class="col-title">정산 · 순이익</div>
+      <div class="col-body">
     <div class="card">
       <div class="card-header"><span class="card-title">마켓별 정산 연결 상태</span><span class="total-badge" id="settleBadge"></span></div>
       <p class="pnote">매출은 카페24 주문 기준(취소 제외 실결제금액)입니다. 정산액·수수료는 마켓 정산 데이터가 연결되면 채워지고, 매출과 정산액이 안 맞는 건은 차이에 표시됩니다.</p>
@@ -891,9 +897,10 @@ tr.row-subtotal td.col-total .amt-main {
         <li><b>배송비</b> — 위탁 발주 시 공급사 배송비</li>
       </ul>
     </div>
-    </div>
+    </div></div>
     <aside class="col col-right" aria-label="자료 업로드와 세무 자료">
       <div class="col-title">자료 업로드 · 세무 자료</div>
+      <div class="col-body">
       <div id="bizPanels"></div>
       <div class="card side-card">
         <div class="card-header"><span class="card-title">두 사업자 합산 (참고용)</span></div>
@@ -903,7 +910,7 @@ tr.row-subtotal td.col-total .amt-main {
         </div>
       </div>
       <div id="upPreview"></div>
-    </aside>
+    </div></aside>
   </div>
 </main>
 
@@ -975,13 +982,23 @@ function renderBizPanels() {
       <div class="side-body">
         <div class="side-label">정산 연결</div><div class="dots">${dots}</div>
         <div class="side-label">자료 업로드</div>
-        ${ups.map(([k, t, h]) => `<label class="upmini"><span><b>${t}</b><small>${h}</small></span><em class="pick">파일 선택</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(b)}|${k}" data-label="${escHtml(b)} · ${t}"></label>`).join('')}
+        ${ups.map(([k, t, h]) => `<label class="upmini"><span><b>${t}</b><small>${h}</small></span><em class="pick">여기로 끌어다 놓거나 눌러서 선택</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(b)}|${k}" data-label="${escHtml(b)} · ${t}"></label>`).join('')}
         <div class="side-label">세무 자료</div>
         <div class="taxmini"><span>매출</span><b>${fmt(gross) || 0}</b><span>공급가액</span><b>${fmt(supply) || 0}</b><span>부가세</span><b>${fmt(gross - supply) || 0}</b></div>
         <button class="side-btn primary" onclick="exportTax('${escHtml(b)}')">${escHtml(b)} 세무 자료 엑셀</button>
       </div></div>`;
   }).join('');
   box.querySelectorAll('[data-up]').forEach(i => i.onchange = () => previewUpload(i));
+  box.querySelectorAll('.upmini').forEach(slot => {
+    const inp = slot.querySelector('input[type=file]');
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('drag'));
+    slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('drag');
+      const f = e.dataTransfer.files && e.dataTransfer.files[0]; if (!f) return;
+      if (!/\.(xlsx|xls|csv)$/i.test(f.name)) { alert('엑셀(xlsx, xls) 또는 csv 파일만 올릴 수 있습니다'); return; }
+      try { const dt = new DataTransfer(); dt.items.add(f); inp.files = dt.files; } catch (_) {}
+      previewUpload(inp, f); });
+  });
 }
 function exportTax(target) {
   if (!currentData || typeof XLSX === 'undefined') { alert('매출 데이터를 먼저 불러와 주세요'); return; }
@@ -1003,8 +1020,8 @@ function exportTax(target) {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s3), '결제수단구분');
   XLSX.writeFile(wb, `CAOS_세무자료_${target && target !== '합산' ? target : '합산'}_${y}-${m}.xlsx`);
 }
-function previewUpload(input) {
-  const f = input.files && input.files[0]; const box = document.getElementById('upPreview'); if (!f) return;
+function previewUpload(input, dropped) {
+  const f = dropped || (input.files && input.files[0]); const box = document.getElementById('upPreview'); if (!f) return;
   const label = input.dataset.label || '';
   const slot = input.closest('.upmini'); if (slot) { slot.classList.add('done'); const pk = slot.querySelector('.pick'); if (pk) pk.textContent = '올림 ✓'; }
   const rd = new FileReader();
@@ -1089,7 +1106,7 @@ function render(data) {
   });
   const channels = [...channelSet].sort();
 
-  document.getElementById('summaryRow').style.display = '';
+  document.getElementById('summaryRow').style.display = 'flex';
   const fullBiz = (currentData && currentData['사업자별']) || biz;
   document.getElementById('sumTotal').textContent = fmt((currentData && currentData['전체합계']) ?? grandTotal) + '원';
   let totalOrders = 0;
@@ -1646,6 +1663,9 @@ async function loadData(force = false) {
 
 // ── Init ─────────────────────────────────────────────────────────────────
 buildPeriodOptions();
+try { if (window.self !== window.top) document.body.classList.add('embed'); } catch (_) { document.body.classList.add('embed'); }
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => e.preventDefault());
 try { const _b = localStorage.getItem('caos-fin-biz'); if (_b && (_b === '합산' || BIZ_ALL.includes(_b))) { document.getElementById('selBiz').value = _b; BIZ_LIST = _b === '합산' ? BIZ_ALL.slice() : [_b]; productActiveBiz = BIZ_LIST[0]; } } catch (_) {}
 loadData();
 </script>
