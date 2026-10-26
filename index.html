@@ -666,6 +666,17 @@ body.embed .header { display:none; }
 .kpi { display:inline-flex; align-items:baseline; gap:6px; padding:6px 12px; border:1px solid var(--bdr); border-left:3px solid var(--bc, var(--gold)); border-radius:var(--rs); background:var(--sur); font-size:12px; color:var(--tx2); }
 .kpi b { color:var(--tx); font-family:'JetBrains Mono',monospace; font-size:13px; }
 .kpi small { color:var(--tx3); font-size:11px; }
+.plats { display:flex; flex-direction:column; gap:6px; }
+.plat { border:1px solid var(--bdr); border-radius:var(--rs); background:var(--sur); }
+.plat.open { border-color:var(--bc); }
+.plat-head { width:100%; display:flex; align-items:center; gap:8px; padding:9px 12px; background:none; border:0; color:var(--tx); font:inherit; font-size:12.5px; cursor:pointer; text-align:left; }
+.plat-head b { font-weight:500; flex:1; }
+.plat-head .chev { color:var(--tx3); width:10px; }
+.plat-head .cnt { font-size:11px; color:var(--tx3); font-family:'JetBrains Mono',monospace; }
+.plat-head .cnt.ok { color:#86efac; }
+.plat-body { padding:0 10px 10px; display:flex; flex-direction:column; gap:6px; }
+.plat-where { font-size:11px; color:var(--bc); padding:0 2px 2px; }
+.opt { font-style:normal; font-size:10px; color:var(--tx3); border:1px solid var(--bdr2); border-radius:999px; padding:0 6px; margin-left:4px; }
 .upmini.drag { border-color:var(--gold); background:var(--gold-bg); }
 .side-body { padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px; }
 .side-label { font-size:11px; color:var(--tx3); margin-top:6px; }
@@ -928,13 +939,26 @@ let productActiveBiz = BIZ_LIST[0];
 
 // ── CAOS 경영지원: 페이지 탭 ──
 const SETTLE_SRC = [
-  { m:'쿠팡',  how:'API · 매출내역 + 지급내역', st:'wait', stTx:'연결 준비', note:'쿠팡 Wing에 서버 IP 등록 필요' },
-  { m:'G마켓', how:'API · ESM 판매대금 정산조회', st:'', stTx:'신청 전', note:'ESM API 사용 신청 필요' },
-  { m:'옥션',  how:'API · ESM 판매대금 정산조회', st:'', stTx:'신청 전', note:'ESM API 사용 신청 필요' },
-  { m:'네이버', how:'API · 권한 확인 필요', st:'', stTx:'확인 중', note:'커머스API 정산 그룹 사용 가능 여부 확인' },
-  { m:'11번가', how:'정산 엑셀 업로드', st:'', stTx:'업로드 대기', note:'11번가 OPEN API에 정산 없음' },
-  { m:'롯데ON', how:'확인 필요(없으면 엑셀)', st:'', stTx:'확인 중', note:'' },
+  { m:'쿠팡',  how:'Wing 엑셀 업로드', st:'wait', stTx:'엑셀 업로드', note:'API 키는 카페24 연동용이라 직접 사용 불가' },
+  { m:'네이버', how:'엑셀 업로드 (API 권한 확인 중)', st:'wait', stTx:'엑셀 업로드', note:'스마트스토어 센터 → 정산관리' },
+  { m:'G마켓', how:'API 신청 전 · 우선 엑셀', st:'wait', stTx:'엑셀 업로드', note:'ESM API 사용 신청 시 자동 수집 가능' },
+  { m:'옥션',  how:'API 신청 전 · 우선 엑셀', st:'wait', stTx:'엑셀 업로드', note:'ESM API 사용 신청 시 자동 수집 가능' },
+  { m:'11번가', how:'엑셀 업로드', st:'wait', stTx:'엑셀 업로드', note:'11번가 OPEN API에 정산 없음' },
+  { m:'롯데ON', how:'엑셀 업로드', st:'wait', stTx:'엑셀 업로드', note:'' },
+  { m:'토스쇼핑', how:'엑셀 업로드', st:'wait', stTx:'엑셀 업로드', note:'카페24 밖 판매 — 매출도 별도 집계 필요' },
 ];
+// 플랫폼별 올릴 자료 (opt: 선택)
+const PLATFORMS = [
+  { k:'coupang', m:'쿠팡', where:'Wing → 정산', files:[['sales','매출내역','정산 → 매출내역'],['settle','정산 현황','정산 → 정산 현황'],['vat','부가세 신고내역','정산 → 부가세 신고내역'],['ads','광고보고서','광고센터 → 광고보고서',1],['rg','로켓그로스 정산현황','정산 → 로켓그로스 정산현황',1]] },
+  { k:'naver', m:'네이버', label:'스마트스토어', where:'스마트스토어센터 → 정산관리', files:[['settle','정산내역(건별)','정산관리 → 정산내역'],['vat','부가세 신고내역','정산관리 → 부가세신고 내역'],['ads','광고비','검색광고 → 보고서',1]] },
+  { k:'gmarket', m:'G마켓', where:'ESM PLUS → 정산관리', files:[['settle','판매대금 정산내역','정산관리 → 판매대금 정산'],['vat','부가세 신고자료','정산관리 → 부가세 신고내역'],['ads','광고비','광고 → 보고서',1]] },
+  { k:'auction', m:'옥션', where:'ESM PLUS → 정산관리', files:[['settle','판매대금 정산내역','정산관리 → 판매대금 정산'],['vat','부가세 신고자료','정산관리 → 부가세 신고내역'],['ads','광고비','광고 → 보고서',1]] },
+  { k:'11st', m:'11번가', where:'셀러오피스 → 정산관리', files:[['settle','정산내역','정산관리 → 정산내역'],['vat','부가세 신고자료','정산관리 → 부가세 신고자료'],['ads','광고비','광고 → 보고서',1]] },
+  { k:'lotteon', m:'롯데ON', where:'판매자센터 → 정산', files:[['settle','정산내역','정산 → 정산내역'],['vat','부가세 신고자료','정산 → 부가세'],['ads','광고비','광고 → 보고서',1]] },
+  { k:'toss', m:'토스쇼핑', where:'토스쇼핑 파트너센터 → 정산', files:[['settle','정산내역','정산 → 정산내역'],['vat','부가세 신고자료','정산 → 부가세'],['ads','광고비','광고 → 보고서',1]] },
+];
+const UPLOADED = {};   // "사업자|플랫폼|자료" → 파일명 (이번 화면에서만, 저장 연결은 다음 단계)
+const OPEN_PLAT = {};  // 사업자별로 펼쳐 둔 플랫폼
 function channelTotal(ch) {
   const biz = (currentData && currentData['사업자별']) || {};
   let t = 0, hit = false;
@@ -971,7 +995,6 @@ function renderBizPanels() {
   const box = document.getElementById('bizPanels'); if (!box) return;
   const all = (currentData && currentData['사업자별']) || {};
   const period = document.getElementById('selPeriod').value.replace('-', '.');
-  const ups = [['11st', '11번가 정산 엑셀', '셀러오피스 → 정산관리'], ['lotteon', '롯데ON 정산 엑셀', '판매자센터 → 정산'], ['coupang-ads', '쿠팡 광고보고서', '광고센터 → 광고보고서']];
   const order = BIZ_LIST.length === 1 ? [BIZ_LIST[0], ...BIZ_ALL.filter(x => x !== BIZ_LIST[0])] : BIZ_ALL;
   box.innerHTML = order.map(b => {
     const gross = Number(all[b]?.['사업자합계'] ?? 0), supply = Math.round(gross / 1.1);
@@ -982,12 +1005,22 @@ function renderBizPanels() {
       <div class="side-body">
         <div class="side-label">정산 연결</div><div class="dots">${dots}</div>
         <div class="side-label">자료 업로드</div>
-        ${ups.map(([k, t, h]) => `<label class="upmini"><span><b>${t}</b><small>${h}</small></span><em class="pick">여기로 끌어다 놓거나 눌러서 선택</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(b)}|${k}" data-label="${escHtml(b)} · ${t}"></label>`).join('')}
+        <div class="plats">${PLATFORMS.map(pf => {
+          const need = pf.files.filter(f => !f[3]), done = need.filter(f => UPLOADED[`${b}|${pf.k}|${f[0]}`]).length;
+          const open = OPEN_PLAT[b] === pf.k;
+          return `<div class="plat${open ? ' open' : ''}" data-biz="${escHtml(b)}" data-plat="${pf.k}">
+            <button type="button" class="plat-head" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><b>${escHtml(pf.label || pf.m)}</b><span class="cnt ${done === need.length ? 'ok' : ''}">${done}/${need.length}</span></button>
+            ${open ? `<div class="plat-body"><div class="plat-where">${escHtml(b)} · ${escHtml(pf.where)}</div>${pf.files.map(([k, t, h, opt]) => {
+              const id = `${b}|${pf.k}|${k}`, fn = UPLOADED[id];
+              return `<label class="upmini${fn ? ' done' : ''}"><span><b>${t}${opt ? ' <i class="opt">선택</i>' : ''}</b><small>${h}</small></span><em class="pick">${fn ? '올림 ✓ ' + escHtml(fn) : '끌어다 놓기 · 눌러서 선택'}</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(id)}" data-label="${escHtml(b)} · ${escHtml(pf.label || pf.m)} · ${t}"></label>`; }).join('')}</div>` : ''}
+          </div>`; }).join('')}</div>
         <div class="side-label">세무 자료</div>
         <div class="taxmini"><span>매출</span><b>${fmt(gross) || 0}</b><span>공급가액</span><b>${fmt(supply) || 0}</b><span>부가세</span><b>${fmt(gross - supply) || 0}</b></div>
         <button class="side-btn primary" onclick="exportTax('${escHtml(b)}')">${escHtml(b)} 세무 자료 엑셀</button>
       </div></div>`;
   }).join('');
+  box.querySelectorAll('.plat-head').forEach(h => h.onclick = () => { const el = h.parentElement, b = el.dataset.biz, k = el.dataset.plat;
+    OPEN_PLAT[b] = OPEN_PLAT[b] === k ? null : k; renderBizPanels(); });
   box.querySelectorAll('[data-up]').forEach(i => i.onchange = () => previewUpload(i));
   box.querySelectorAll('.upmini').forEach(slot => {
     const inp = slot.querySelector('input[type=file]');
@@ -1023,7 +1056,8 @@ function exportTax(target) {
 function previewUpload(input, dropped) {
   const f = dropped || (input.files && input.files[0]); const box = document.getElementById('upPreview'); if (!f) return;
   const label = input.dataset.label || '';
-  const slot = input.closest('.upmini'); if (slot) { slot.classList.add('done'); const pk = slot.querySelector('.pick'); if (pk) pk.textContent = '올림 ✓'; }
+  if (input.dataset.up) UPLOADED[input.dataset.up] = f.name;
+  const keepScroll = document.querySelector('.col-right .col-body')?.scrollTop; renderBizPanels(); const cb = document.querySelector('.col-right .col-body'); if (cb && keepScroll != null) cb.scrollTop = keepScroll;
   const rd = new FileReader();
   rd.onload = e => { try {
     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
