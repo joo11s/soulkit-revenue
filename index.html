@@ -700,6 +700,10 @@ body.embed .header { display:none; }
 .plat-body { padding:0 10px 10px; display:flex; flex-direction:column; gap:6px; }
 .plat-where { font-size:11px; color:var(--bc); padding:0 2px 2px; }
 .opt { font-style:normal; font-size:10px; color:var(--tx3); border:1px solid var(--bdr2); border-radius:999px; padding:0 6px; margin-left:4px; }
+.upmini.numrow { cursor:default; }
+.numin { display:flex; gap:6px; }
+.numin input { flex:1; min-width:0; padding:7px 10px; border-radius:var(--rs); border:1px solid var(--bdr2); background:var(--sur); color:var(--tx); font:inherit; font-size:12.5px; font-family:'JetBrains Mono',monospace; }
+.numin .side-btn { width:auto; padding:7px 12px; }
 .upmini.drag { border-color:var(--gold); background:var(--gold-bg); }
 .side-body { padding:12px 16px 16px; display:flex; flex-direction:column; gap:8px; }
 .side-label { font-size:11px; color:var(--tx3); margin-top:6px; }
@@ -921,7 +925,7 @@ body.embed .header { display:none; }
     <div class="card">
       <div class="card-header"><span class="card-title">사업자별 순이익</span></div>
       <p class="pnote">순이익 = 매출 − 마켓 수수료 − 도매 원가 − 광고비 − 배송비. 아직 연결 안 된 항목은 "연결 전"으로 표시되며, 연결되는 대로 계산에 들어갑니다.</p>
-      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">매출</th><th class="num">마켓 수수료</th><th class="num">도매 원가</th><th class="num">광고비</th><th class="num">배송비</th><th class="num">순이익</th></tr></thead><tbody id="profitBody"></tbody></table></div>
+      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">매출</th><th class="num">마켓 수수료</th><th class="num">도매 원가</th><th class="num">광고비</th><th class="num">배송비</th><th class="num">이익</th></tr></thead><tbody id="profitBody"></tbody></table></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">항목별 데이터 출처</span></div>
@@ -981,7 +985,7 @@ const SETTLE_SRC = [
 ];
 // 플랫폼별 올릴 자료 (opt: 선택)
 const PLATFORMS = [
-  { k:'coupang', m:'쿠팡', where:'Wing → 정산', files:[['sales','매출내역','정산 → 매출내역'],['settle','정산 현황','정산 → 정산 현황'],['vat','부가세 신고내역','정산 → 부가세 신고내역'],['ads','광고보고서','광고센터 → 광고보고서',1],['rg','로켓그로스 정산현황','정산 → 로켓그로스 정산현황',1]] },
+  { k:'coupang', m:'쿠팡', where:'Wing → 정산', files:[['sales','매출내역 주문 상세','정산 → 매출내역 → 엑셀 다운로드 요청 → 다운로드 목록'],['ads','광고비 · 최종청구금액','광고 보고서 → 광고비 정산 보고서 → 해당 월',1,'num'],['vat','부가세 신고내역','정산 → 부가세 신고내역 (신고 때만)',1]] },
   { k:'naver', m:'네이버', label:'스마트스토어', where:'스마트스토어센터 → 정산관리', files:[['settle','정산내역(건별)','정산관리 → 정산내역'],['vat','부가세 신고내역','정산관리 → 부가세신고 내역'],['ads','광고비','검색광고 → 보고서',1]] },
   { k:'gmarket', m:'G마켓', where:'ESM PLUS → 정산관리', files:[['settle','판매대금 정산내역','정산관리 → 판매대금 정산'],['vat','부가세 신고자료','정산관리 → 부가세 신고내역'],['ads','광고비','광고 → 보고서',1]] },
   { k:'auction', m:'옥션', where:'ESM PLUS → 정산관리', files:[['settle','판매대금 정산내역','정산관리 → 판매대금 정산'],['vat','부가세 신고자료','정산관리 → 부가세 신고내역'],['ads','광고비','광고 → 보고서',1]] },
@@ -1046,7 +1050,42 @@ function renderGuide() {
   document.querySelectorAll('.g-head').forEach(h => h.onclick = () => { GUIDE_OPEN = GUIDE_OPEN === h.dataset.g ? null : h.dataset.g; renderGuide(); });
 }
 function openGuide(on) { const w = document.getElementById('guideWrap'); w.hidden = !on; if (on) { renderGuide(); requestAnimationFrame(() => w.classList.add('show')); } else w.classList.remove('show'); }
-const UPLOADED = {};   // "사업자|플랫폼|자료" → 파일명 (이번 화면에서만, 저장 연결은 다음 단계)
+const SETTLE_API = 'https://n8n.wonflowai.com/webhook/';
+let SETTLE_ITEMS = [];  // 서버에 저장된 이번 달 정산 자료
+const stItem = (b, k, kind) => SETTLE_ITEMS.find(x => x.biz === b && x.platform === k && x.kind === kind);
+async function loadSettle(month) {
+  try { const r = await fetch(SETTLE_API + 'caos-settle-get?month=' + month, { cache: 'no-store' }); const j = await r.json(); SETTLE_ITEMS = j.items || []; }
+  catch (_) { SETTLE_ITEMS = []; }
+}
+async function saveSettle(body) {
+  const r = await fetch(SETTLE_API + 'caos-settle-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const j = await r.json(); if (!j.ok) throw new Error(j.msg || '저장 실패'); return j;
+}
+const numv = v => { const n = Number(String(v ?? '').replace(/[^0-9.\-]/g, '')); return isFinite(n) ? n : 0; };
+// 플랫폼별 엑셀 읽기 — 파일 이름이 아니라 열 이름으로 판단
+const PARSERS = {
+  'coupang|sales': {
+    need: ['주문번호', '과세유형', '판매액', '판매수수료', '정산금액', '구매확정일'],
+    parse(aoa) {
+      const H = aoa[0].map(x => String(x ?? '').trim()), ix = k => H.indexOf(k);
+      const S = { sales: 0, ship: 0, fee: 0, settle: 0, refund: 0, refundCnt: 0, tax: { TAX: { sales: 0, settle: 0 }, FREE: { sales: 0, settle: 0 } } };
+      const orders = {}, months = {}; let cur = 'TAX';
+      aoa.slice(1).forEach(r => {
+        const no = String(r[ix('주문번호')] ?? '').trim(); if (!no) return;
+        const type = String(r[ix('과세유형')] ?? '').trim(); const isProd = !!type; if (isProd) cur = type === 'FREE' ? 'FREE' : 'TAX';
+        const sale = numv(r[ix('판매액')]), fee = numv(r[ix('판매수수료')]), st = numv(r[ix('정산금액')]);
+        if (isProd) S.sales += sale; else S.ship += sale;
+        S.fee += fee; S.settle += st; if (sale < 0) { S.refund += sale; S.refundCnt++; }
+        S.tax[cur].sales += sale; S.tax[cur].settle += st;
+        const d = String(r[ix('구매확정일')] ?? '').slice(0, 7); if (isProd && /^\d{4}-\d{2}$/.test(d)) months[d] = (months[d] || 0) + 1;
+        const o = orders[no] || (orders[no] = [no, 0, 0, String(r[ix('구매확정일')] ?? '')]); o[1] += sale; o[2] += st;
+      });
+      S.orders = Object.keys(orders).length;
+      const month = Object.entries(months).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
+      return { month, summary: S, orders: Object.values(orders) };
+    }
+  }
+};
 const OPEN_PLAT = {};  // 사업자별로 펼쳐 둔 플랫폼
 function channelTotal(ch) {
   const biz = (currentData && currentData['사업자별']) || {};
@@ -1055,30 +1094,51 @@ function channelTotal(ch) {
   return hit ? t : null;
 }
 const wonCell = v => v == null ? '<span class="muted">—</span>' : fmt(v);
+function platOf(m) { return PLATFORMS.find(p => p.m === m || p.label === m); }
+function settleFor(m) {  // 선택한 사업자들의 해당 마켓 정산 합계 (없으면 null)
+  const pf = platOf(m); if (!pf) return null;
+  let hit = false; const t = { gross: 0, settle: 0, fee: 0 };
+  const all = (currentData && currentData['사업자별']) || {}; t.c24 = 0;
+  BIZ_LIST.forEach(b => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { hit = true; t.gross += (it.summary.sales || 0) + (it.summary.ship || 0); t.settle += it.summary.settle || 0; t.fee += it.summary.fee || 0; t.c24 += Number(all[b]?.['채널별매출']?.[m] || 0); } });
+  return hit ? t : null;
+}
 function renderSettle() {
   const body = document.getElementById('settleBody'); if (!body) return;
   const known = new Set(SETTLE_SRC.map(x => x.m));
   const biz = (currentData && currentData['사업자별']) || {};
   const extra = new Set(); BIZ_LIST.forEach(b => Object.keys(biz[b]?.['채널별매출'] || {}).forEach(c => { if (!known.has(c)) extra.add(c); }));
   const rows = SETTLE_SRC.concat([...extra].map(c => ({ m:c, how:'확인 필요', st:'', stTx:'확인 중', note:'' })));
-  body.innerHTML = rows.map(x => `<tr><td>${escHtml(x.m)}<div><span class="pill ${x.st}">${escHtml(x.stTx)}</span></div></td><td class="wrap">${escHtml(x.how)}${x.note ? `<div class="muted" style="font-size:11px">${escHtml(x.note)}</div>` : ''}</td>
-    <td class="num">${wonCell(channelTotal(x.m))}</td>
-    <td class="num"><span class="muted">연결 전</span></td><td class="num"><span class="muted">연결 전</span></td><td class="num"><span class="muted">—</span></td></tr>`).join('');
+  const pend = '<span class="muted">자료 전</span>';
+  body.innerHTML = rows.map(x => { const st = settleFor(x.m), c24 = channelTotal(x.m);
+    const diff = st ? st.c24 - st.gross : null;
+    return `<tr><td>${escHtml(x.m)}<div><span class="pill ${st ? 'ok' : x.st}">${st ? '자료 있음' : escHtml(x.stTx)}</span></div></td><td class="wrap">${escHtml(x.how)}${x.note ? `<div class="muted" style="font-size:11px">${escHtml(x.note)}</div>` : ''}</td>
+    <td class="num">${wonCell(c24)}</td>
+    <td class="num">${st ? fmt(Math.round(st.settle)) : pend}</td><td class="num">${st ? fmt(Math.round(st.fee)) : pend}</td>
+    <td class="num" title="카페24 매출 − 마켓 판매액(배송비 포함). 카페24는 주문일·실결제, 쿠팡은 구매확정일 기준이라 차이가 날 수 있습니다">${diff == null ? '<span class="muted">—</span>' : (diff > 0 ? '+' : '') + fmt(Math.round(diff))}</td></tr>`; }).join('');
   const p = document.getElementById('selPeriod').value; document.getElementById('settleBadge').textContent = p.replace('-', '.');
+}
+function bizCost(b) {  // 사업자별 올린 자료 합계
+  const r = { settle: 0, fee: 0, ads: 0, free: 0, plats: [] };
+  PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { r.settle += it.summary.settle || 0; r.fee += it.summary.fee || 0; r.free += it.summary.tax?.FREE?.sales || 0; r.plats.push(pf.label || pf.m); }
+    const ad = stItem(b, pf.k, 'ads'); if (ad && ad.value) r.ads += Math.round(ad.value / 1.1); });
+  return r;
 }
 function renderProfit() {
   const body = document.getElementById('profitBody'); if (!body) return;
   const biz = (currentData && currentData['사업자별']) || {};
   const pend = '<span class="muted">연결 전</span>';
-  let tot = 0;
-  body.innerHTML = BIZ_LIST.map(b => { const v = biz[b]?.['사업자합계'] ?? null; tot += Number(v) || 0;
-    return `<tr><td>${escHtml(b)}</td><td class="num">${wonCell(v)}</td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td></tr>`; }).join('')
-    + `<tr><td><b>합계</b></td><td class="num"><b>${fmt(tot) || 0}</b></td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td><td class="num">${pend}</td></tr>`;
+  const T = { gross: 0, fee: 0, ads: 0, profit: 0, any: false };
+  const row = (name, gross, c, last) => `<tr><td>${last ? '<b>합계</b>' : escHtml(name)}${!last && c.plats.length ? `<div class="muted" style="font-size:11px">${escHtml(c.plats.join('·'))} 자료</div>` : ''}</td><td class="num">${wonCell(gross)}</td>
+    <td class="num">${c.plats.length ? fmt(Math.round(c.fee)) : pend}</td><td class="num">${pend}</td><td class="num">${c.ads ? fmt(c.ads) : (c.plats.length ? '0' : pend)}</td><td class="num">${pend}</td>
+    <td class="num">${c.plats.length ? `<b>${fmt(Math.round(c.settle - c.ads))}</b><div class="muted" style="font-size:11px">원가 반영 전</div>` : pend}</td></tr>`;
+  const agg = { settle: 0, fee: 0, ads: 0, plats: [] };
+  body.innerHTML = BIZ_LIST.map(b => { const v = biz[b]?.['사업자합계'] ?? null; T.gross += Number(v) || 0; const c = bizCost(b);
+    agg.settle += c.settle; agg.fee += c.fee; agg.ads += c.ads; if (c.plats.length) agg.plats.push(b); return row(b, v, c); }).join('') + row('합계', T.gross, agg, true);
 }
-function taxRows(list) {
+function taxRows(list) {  // 면세(쿠팡 등 올린 자료의 FREE 판매액)는 부가세 계산에서 뺌
   const biz = (currentData && currentData['사업자별']) || {};
-  return (list || BIZ_ALL).map(b => { const gross = Number(biz[b]?.['사업자합계'] ?? 0); const supply = Math.round(gross / 1.1);
-    return { b, gross, deduct: 0, net: gross, supply, vat: gross - supply }; });
+  return (list || BIZ_ALL).map(b => { const gross = Number(biz[b]?.['사업자합계'] ?? 0); const free = Math.round(bizCost(b).free); const taxable = gross - free; const supply = Math.round(taxable / 1.1);
+    return { b, gross, deduct: 0, net: gross, free, taxable, supply, vat: taxable - supply }; });
 }
 function renderBizPanels() {
   const box = document.getElementById('bizPanels'); if (!box) return;
@@ -1086,7 +1146,7 @@ function renderBizPanels() {
   const period = document.getElementById('selPeriod').value.replace('-', '.');
   const order = BIZ_LIST.length === 1 ? [BIZ_LIST[0], ...BIZ_ALL.filter(x => x !== BIZ_LIST[0])] : BIZ_ALL;
   box.innerHTML = order.map(b => {
-    const gross = Number(all[b]?.['사업자합계'] ?? 0), supply = Math.round(gross / 1.1);
+    const tr = taxRows([b])[0], gross = tr.gross, supply = tr.supply;
     const chs = Object.keys(all[b]?.['채널별매출'] || {});
     const dots = SETTLE_SRC.filter(x => chs.includes(x.m)).map(x => `<span class="dot ${x.st}" title="${escHtml(x.how)} · ${escHtml(x.stTx)}">${escHtml(x.m)}</span>`).join('') || '<span class="muted">이번 달 판매 마켓 없음</span>';
     return `<div class="card side-card biz-card" style="--bc:${BIZ_COLOR[b]}">
@@ -1095,23 +1155,30 @@ function renderBizPanels() {
         <div class="side-label">정산 연결</div><div class="dots">${dots}</div>
         <div class="side-label">자료 업로드</div>
         <div class="plats">${PLATFORMS.map(pf => {
-          const need = pf.files.filter(f => !f[3]), done = need.filter(f => UPLOADED[`${b}|${pf.k}|${f[0]}`]).length;
+          const need = pf.files.filter(f => !f[3]), done = need.filter(f => stItem(b, pf.k, f[0])).length;
           const open = OPEN_PLAT[b] === pf.k;
           return `<div class="plat${open ? ' open' : ''}" data-biz="${escHtml(b)}" data-plat="${pf.k}">
             <button type="button" class="plat-head" aria-expanded="${open}"><span class="chev">${open ? '▾' : '▸'}</span><b>${escHtml(pf.label || pf.m)}</b><span class="cnt ${done === need.length ? 'ok' : ''}">${done}/${need.length}</span></button>
-            ${open ? `<div class="plat-body"><div class="plat-where">${escHtml(b)} · ${escHtml(pf.where)}</div>${pf.files.map(([k, t, h, opt]) => {
-              const id = `${b}|${pf.k}|${k}`, fn = UPLOADED[id];
-              return `<label class="upmini${fn ? ' done' : ''}"><span><b>${t}${opt ? ' <i class="opt">선택</i>' : ''}</b><small>${h}</small></span><em class="pick">${fn ? '올림 ✓ ' + escHtml(fn) : '끌어다 놓기 · 눌러서 선택'}</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(id)}" data-label="${escHtml(b)} · ${escHtml(pf.label || pf.m)} · ${t}"></label>`; }).join('')}</div>` : ''}
+            ${open ? `<div class="plat-body"><div class="plat-where">${escHtml(b)} · ${escHtml(pf.where)}</div>${pf.files.map(([k, t, h, opt, typ]) => {
+              const id = `${b}|${pf.k}|${k}`, it = stItem(b, pf.k, k), fn = it && (it.file || (it.value != null ? fmt(it.value) + '원' : ''));
+              if (typ === 'num') return `<div class="upmini numrow${it ? ' done' : ''}"><span><b>${t}${opt ? ' <i class="opt">선택</i>' : ''}</b><small>${h}</small></span><div class="numin"><input type="text" inputmode="numeric" placeholder="예) 939084" value="${it && it.value != null ? fmt(it.value) : ''}" data-num="${escHtml(id)}"><button type="button" class="side-btn" data-numsave="${escHtml(id)}">저장</button></div>${it ? `<em class="pick">저장됨 ✓ ${fmt(it.value)}원 · 공급가 ${fmt(Math.round(it.value / 1.1))}원</em>` : ''}</div>`;
+              const sm = it && it.summary && it.summary.settle != null ? ` · 정산 ${fmt(Math.round(it.summary.settle))}원 · ${it.summary.orders || 0}건` : '';
+              return `<label class="upmini${fn ? ' done' : ''}"><span><b>${t}${opt ? ' <i class="opt">선택</i>' : ''}</b><small>${h}</small></span><em class="pick">${fn ? '올림 ✓ ' + escHtml(fn) + sm + ' (다시 올리면 교체)' : '끌어다 놓기 · 눌러서 선택'}</em><input type="file" hidden accept=".xlsx,.xls,.csv" data-up="${escHtml(id)}" data-label="${escHtml(b)} · ${escHtml(pf.label || pf.m)} · ${t}"></label>`; }).join('')}</div>` : ''}
           </div>`; }).join('')}</div>
         <div class="side-label">세무 자료</div>
-        <div class="taxmini"><span>매출</span><b>${fmt(gross) || 0}</b><span>공급가액</span><b>${fmt(supply) || 0}</b><span>부가세</span><b>${fmt(gross - supply) || 0}</b></div>
+        <div class="taxmini"><span>매출</span><b>${fmt(gross) || 0}</b><span>공급가액</span><b>${fmt(supply) || 0}</b><span>면세(올린 자료)</span><b>${fmt(tr.free) || 0}</b><span>부가세</span><b>${fmt(tr.vat) || 0}</b></div>
         <button class="side-btn primary" onclick="exportTax('${escHtml(b)}')">${escHtml(b)} 세무 자료 엑셀</button>
       </div></div>`;
   }).join('');
   box.querySelectorAll('.plat-head').forEach(h => h.onclick = () => { const el = h.parentElement, b = el.dataset.biz, k = el.dataset.plat;
     OPEN_PLAT[b] = OPEN_PLAT[b] === k ? null : k; renderBizPanels(); });
   box.querySelectorAll('[data-up]').forEach(i => i.onchange = () => previewUpload(i));
-  box.querySelectorAll('.upmini').forEach(slot => {
+  box.querySelectorAll('[data-numsave]').forEach(btn => btn.onclick = async () => {
+    const [b, k, kind] = btn.dataset.numsave.split('|'); const v = numv(box.querySelector(`[data-num="${CSS.escape(btn.dataset.numsave)}"]`).value);
+    const month = document.getElementById('selPeriod').value; btn.disabled = true; btn.textContent = '저장 중';
+    try { await saveSettle({ month, biz: b, platform: k, kind, value: v }); await loadSettle(month); renderFinancePages(); }
+    catch (e) { alert('저장하지 못했습니다: ' + e.message); btn.disabled = false; btn.textContent = '저장'; } });
+  box.querySelectorAll('label.upmini').forEach(slot => {
     const inp = slot.querySelector('input[type=file]');
     slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('drag'); });
     slot.addEventListener('dragleave', () => slot.classList.remove('drag'));
@@ -1130,13 +1197,18 @@ function exportTax(target) {
   const list = target && target !== '합산' ? [target] : BIZ_ALL;
   const rows = taxRows(list);
   const s1 = [['CAOS 세무 자료 · ' + (target && target !== '합산' ? target : '두 사업자 합산') + ' (' + y + '년 ' + parseInt(m) + '월)'], ['기준: 카페24 주문 실결제금액(취소 제외), 공급가액 = 매출 ÷ 1.1 (과세 기준)'], [],
-    ['사업자', '총매출', '취소·반품·환불 차감', '순매출', '공급가액', '부가세']];
-  rows.forEach(r => s1.push([r.b, r.gross, r.deduct, r.net, r.supply, r.vat]));
-  s1.push(['합계', ...['gross','deduct','net','supply','vat'].map(k => rows.reduce((a, r) => a + r[k], 0))]);
+    ['사업자', '총매출', '취소·반품·환불 차감', '순매출', '면세 매출', '과세 매출', '공급가액(과세)', '부가세']];
+  rows.forEach(r => s1.push([r.b, r.gross, r.deduct, r.net, r.free, r.taxable, r.supply, r.vat]));
+  s1.push(['합계', ...['gross','deduct','net','free','taxable','supply','vat'].map(k => rows.reduce((a, r) => a + r[k], 0))]);
+  s1.push([]); s1.push(['※ 면세 매출은 올린 마켓 정산 자료(쿠팡 매출내역의 과세유형 FREE 등) 기준입니다. 자료를 안 올린 마켓의 면세 상품은 아직 반영되지 않습니다.']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s1), '요약');
   const s2 = [['사업자', '마켓', '매출(실결제)', '구분']];
   list.forEach(b => Object.entries(biz[b]?.['채널별매출'] || {}).forEach(([ch, v]) => s2.push([b, ch, v, '오픈마켓 판매대행'])));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s2), '마켓별매출');
+  const s4 = [['사업자', '마켓', '자료', '판매액', '배송비', '과세 판매액', '면세 판매액', '수수료', '정산금액', '주문 수', '파일']];
+  list.forEach(b => PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { const S = it.summary; s4.push([b, pf.label || pf.m, '매출내역', S.sales, S.ship, S.tax?.TAX?.sales, S.tax?.FREE?.sales, S.fee, S.settle, S.orders, it.file]); }
+    const ad = stItem(b, pf.k, 'ads'); if (ad && ad.value) s4.push([b, pf.label || pf.m, '광고비(최종청구금액)', '', '', '', '', '', -ad.value, '', '공급가 ' + Math.round(ad.value / 1.1)]); }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s4), '마켓정산자료');
   const s3 = [['사업자', '마켓', '신용카드', '현금영수증', '기타', '비고']];
   list.forEach(b => Object.keys(biz[b]?.['채널별매출'] || {}).forEach(ch => s3.push([b, ch, '', '', '', '마켓 정산 연결 후 채움(판매자센터 부가세 신고자료 기준)'])));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(s3), '결제수단구분');
@@ -1144,17 +1216,34 @@ function exportTax(target) {
 }
 function previewUpload(input, dropped) {
   const f = dropped || (input.files && input.files[0]); const box = document.getElementById('upPreview'); if (!f) return;
-  const label = input.dataset.label || '';
-  if (input.dataset.up) UPLOADED[input.dataset.up] = f.name;
-  const keepScroll = document.querySelector('.col-right .col-body')?.scrollTop; renderBizPanels(); const cb = document.querySelector('.col-right .col-body'); if (cb && keepScroll != null) cb.scrollTop = keepScroll;
+  const label = input.dataset.label || ''; const [biz, plat, kind] = (input.dataset.up || '').split('|');
+  const sel = document.getElementById('selPeriod').value;
+  const show = (html) => { box.innerHTML = `<div class="card side-card"><div class="card-header"><span class="card-title">올린 자료 확인</span></div><div class="pnote">${html}</div></div>`; box.scrollIntoView({ block: 'nearest' }); };
+  show(`<b style="color:var(--tx)">${escHtml(label)}</b> · ${escHtml(f.name)} 읽는 중…`);
   const rd = new FileReader();
-  rd.onload = e => { try {
+  rd.onload = async e => { try {
     const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-    const ws = wb.Sheets[wb.SheetNames[0]]; const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, blankrows: false });
-    const head = (aoa[0] || []).map(x => escHtml(String(x ?? ''))); const n = Math.max(0, aoa.length - 1);
-    box.innerHTML = `<div class="card side-card"><div class="card-header"><span class="card-title">미리보기</span><span class="total-badge">저장 연결은 다음 단계</span></div><div class="pnote"><b style="color:var(--tx)">${escHtml(label)}</b> · ${escHtml(f.name)} · ${n}행</div>
-      <div class="table-wrap" style="max-height:260px"><table class="ptable"><thead><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr></thead><tbody>${aoa.slice(1, 6).map(r => `<tr>${head.map((_, i) => `<td>${escHtml(String(r[i] ?? ''))}</td>`).join('')}</tr>`).join('')}</tbody></table></div></div>`;
-  } catch (err) { box.innerHTML = '<div class="pempty">파일을 읽지 못했습니다: ' + escHtml(err.message) + '</div>'; } };
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, blankrows: false, raw: true });
+    const P = PARSERS[plat + '|' + kind];
+    let body = { biz, platform: plat, kind, file: f.name, month: sel };
+    if (P) {
+      const H = (aoa[0] || []).map(x => String(x ?? '').trim()); const miss = P.need.filter(k => !H.includes(k));
+      if (miss.length) { show(`<span style="color:var(--red)">이 파일은 <b>${escHtml(label)}</b> 양식이 아닙니다.</span><br>없는 열: ${escHtml(miss.join(', '))}<br>다른 플랫폼·다른 자료 파일인지 확인해 주세요. 저장하지 않았습니다.`); return; }
+      const r = P.parse(aoa);
+      if (r.month && r.month !== sel) { if (!confirm(`이 파일은 ${r.month} 자료입니다.\n지금 보고 있는 ${sel}이 아니라 ${r.month}로 저장할까요?`)) { show('저장을 취소했습니다.'); return; } }
+      body.month = r.month || sel; body.summary = r.summary; body.orders = r.orders;
+    } else {
+      body.summary = { rows: Math.max(0, aoa.length - 1), headers: (aoa[0] || []).slice(0, 40).map(x => String(x ?? '')) };
+    }
+    await saveSettle(body);
+    if (body.month !== sel) { document.getElementById('selPeriod').value = body.month; await loadData(); }
+    else { await loadSettle(sel); renderFinancePages(); }
+    const S = body.summary;
+    show(P ? `<b style="color:var(--tx)">${escHtml(label)}</b> · ${escHtml(body.month)} 저장 완료 ✓<br>
+      판매액 ${fmt(Math.round(S.sales))}원 + 배송비 ${fmt(Math.round(S.ship))}원 · 수수료 ${fmt(Math.round(S.fee))}원 · <b style="color:var(--gold)">정산 ${fmt(Math.round(S.settle))}원</b><br>
+      주문 ${S.orders}건 · 과세 ${fmt(Math.round(S.tax.TAX.sales))}원 · 면세 ${fmt(Math.round(S.tax.FREE.sales))}원${S.refundCnt ? ` · 환불 ${S.refundCnt}건 ${fmt(Math.round(S.refund))}원` : ''}`
+      : `<b style="color:var(--tx)">${escHtml(label)}</b> · ${escHtml(f.name)} 저장 완료 ✓ (${S.rows}행)<br><span class="muted">이 자료는 아직 계산 양식이 연결되지 않아 파일 정보만 저장했습니다. 실제 파일로 양식을 맞추면 계산에 들어갑니다.</span>`);
+  } catch (err) { show('<span style="color:var(--red)">처리하지 못했습니다: ' + escHtml(err.message) + '</span>'); } };
   rd.readAsArrayBuffer(f);
 }
 function renderFinancePages() { renderSettle(); renderProfit(); renderBizPanels(); }
@@ -1749,6 +1838,7 @@ async function loadData(force = false) {
   try {
     const data = await fetchMonth(year, month, force);
     currentData = data;
+    await loadSettle(period);
     const vd = viewData();
     render(vd);
     renderFinancePages();
