@@ -1108,7 +1108,7 @@ async function syncDome(month) {
   if (days > 180) return;  // 오래된 달은 저장해 둔 기록만 사용
   for (const [b, code] of Object.entries(DOME_BIZ)) {
     try {
-      const j = await fetch(SETTLE_API + 'soulkit-domeggook-consign-orderlist?biz=' + code + '&day=' + days, { cache: 'no-store' }).then(r => r.json());
+      const j = await fetch(SETTLE_API + 'soulkit-domeggook-consign-orderlist?biz=' + code + '&day=' + days, { cache: 'no-store', signal: AbortSignal.timeout(30000) }).then(r => r.json());
       const d = j.domeggook || j; const items = d.items || [];
       if ((d.header?.numberOfPages || 1) > 1) DOME_NOTE[b] = '구매 목록이 20건을 넘어 일부만 반영됐을 수 있습니다';
       const mine = items.filter(x => String(x.date || '').startsWith(month) && !/취소/.test(x.status || ''));
@@ -1973,8 +1973,9 @@ async function loadData(force = false) {
   try {
     const data = await fetchMonth(year, month, force);
     currentData = data;
-    await loadSettle(period);
-    await syncDome(period); await Promise.all([loadSettle(period), loadDaily(period), loadCost()]);
+    await Promise.all([loadSettle(period), loadDaily(period), loadCost()]);
+    // 도매꾹 구매목록 동기화는 느릴 수 있어 화면을 먼저 그린 뒤 뒤에서 갱신
+    syncDome(period).then(() => loadSettle(period)).then(() => { if (document.getElementById('selPeriod').value === period) renderFinancePages(); }).catch(() => {});
     const vd = viewData();
     render(vd);
     renderFinancePages();
