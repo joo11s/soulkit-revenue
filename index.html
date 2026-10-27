@@ -1076,7 +1076,7 @@ function openGuide(on) { const w = document.getElementById('guideWrap'); w.hidde
 const SETTLE_API = 'https://n8n.wonflowai.com/webhook/';
 let SETTLE_ITEMS = [];
 let DAILY = null;  // 출고 기준 매출 (매일 17시 자동 기록)
-async function loadDaily(month) { try { DAILY = await fetch(SETTLE_API + 'caos-daily-get?month=' + month, { cache: 'no-store' }).then(r => r.json()); } catch (_) { DAILY = null; } }
+async function loadDaily(month) { try { DAILY = await cachedJson(SETTLE_API + 'caos-daily-get?month=' + month); } catch (_) { DAILY = null; } }
 const manualLoss = b => { const it = stItem(b, 'manual', 'claims'); return it && it.summary ? { amt: it.summary.total || 0, n: it.summary.count || 0 } : { amt: 0, n: 0 }; };
 function renderShip() {
   const body = document.getElementById('shipBody'); if (!body) return;
@@ -1095,7 +1095,7 @@ function renderShip() {
 }  // 서버에 저장된 이번 달 정산 자료
 const stItem = (b, k, kind) => SETTLE_ITEMS.find(x => x.biz === b && x.platform === k && x.kind === kind);
 async function loadSettle(month) {
-  try { const r = await fetch(SETTLE_API + 'caos-settle-get?orders=1&month=' + month, { cache: 'no-store' }); const j = await r.json(); SETTLE_ITEMS = j.items || []; }
+  try { const j = await cachedJson(SETTLE_API + 'caos-settle-get?orders=1&month=' + month); SETTLE_ITEMS = j.items || []; }
   catch (_) { SETTLE_ITEMS = []; }
 }
 // 도매꾹(위탁) 매입: 구매목록에서 그 달 구매분(구매취소 제외)을 사업자별로 자동 기록
@@ -1123,6 +1123,7 @@ async function syncDome(month) {
   }
 }
 async function saveSettle(body) {
+  cacheDrop('caos-settle-get'); cacheDrop('caos-daily-get');
   const r = await fetch(SETTLE_API + 'caos-settle-save', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
   const j = await r.json(); if (!j.ok) throw new Error(j.msg || '저장 실패'); return j;
 }
@@ -1186,7 +1187,7 @@ function renderSettle() {
 }
 // ── 거래처 원가표 (서버 n8n에 저장, 출고 기록 원가 계산과 같은 규칙) ──
 let COST_TABLE = [], COST_UPDATED = '';
-async function loadCost() { try { const j = await fetch(SETTLE_API + 'caos-cost', { cache: 'no-store' }).then(r => r.json()); COST_TABLE = j.items || []; COST_UPDATED = j.updated || ''; } catch (_) {} }
+async function loadCost() { try { const j = await cachedJson(SETTLE_API + 'caos-cost'); COST_TABLE = j.items || []; COST_UPDATED = j.updated || ''; } catch (_) {} }
 const FEE_EST = { '쿠팡': 0.115, '네이버': 0.055, '11번가': 0.13, 'G마켓': 0.13, '옥션': 0.13, '롯데ON': 0.12, '토스쇼핑': 0.1 };
 const unitOf = s => { const m = String(s || '').match(/(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)\b/i); if (!m) return null; let v = Number(m[1]), u = m[2].toLowerCase(); if (u === 'kg') { v *= 1000; u = 'g'; } if (u === 'l') { v *= 1000; u = 'ml'; } if (u === '입') u = '구'; return { v, u }; };
 const optUnit = (opt, u) => { const re = /(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)(?![a-z])/gi; let m; while ((m = re.exec(String(opt || '')))) { let v = Number(m[1]), uu = m[2].toLowerCase(); if (uu === 'kg') { v *= 1000; uu = 'g'; } if (uu === 'l') { v *= 1000; uu = 'ml'; } if (uu === '입') uu = '구'; if (uu === u) return v; } return null; };
@@ -1250,7 +1251,7 @@ function renderCostPanel() {
   box.querySelectorAll('[data-cdel]').forEach(x => x.onclick = () => { COST_TABLE = read(); COST_TABLE.splice(Number(x.dataset.cdel), 1); renderCostPanel(); });
   box.querySelectorAll('[data-cadd]').forEach(x => x.onclick = () => { COST_TABLE = read(); const w = x.dataset.cadd.replace(/[\[\]()]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).join(' '); COST_TABLE.push({ key: w, label: x.dataset.cadd.slice(0, 30), unit: '', cost: 0 }); renderCostPanel(); });
   box.querySelector('#costSave').onclick = async () => { const items = read().filter(t => t.key && t.cost > 0); const btn = box.querySelector('#costSave'); btn.disabled = true; btn.textContent = '저장 중…';
-    try { const j = await fetch(SETTLE_API + 'caos-cost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) }).then(r => r.json()); COST_TABLE = j.items || items; COST_UPDATED = j.updated || '';
+    try { const j = await fetch(SETTLE_API + 'caos-cost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) }).then(r => r.json()); COST_TABLE = j.items || items; COST_UPDATED = j.updated || ''; cacheDrop('caos-cost'); cacheDrop('caos-daily-get');
       await loadDaily(document.getElementById('selPeriod').value); renderFinancePages(); }
     catch (e) { alert('저장하지 못했습니다: ' + e.message); btn.disabled = false; btn.textContent = '원가표 저장'; } };
 }
@@ -1425,11 +1426,22 @@ function buildPeriodOptions() {
 }
 
 // ── Fetch helper ────────────────────────────────────────────────────────
+// ── 화면 캐시: 매일 17시(한국시간) 집계 기준. 다음 17시 전까지는 저장해 둔 값을 바로 보여 주고, 새로고침 버튼을 누를 때만 다시 불러옴 ──
+let FORCE = false, CACHE_AT = null;
+const kstNow = () => new Date(Date.now() + 9 * 3600e3);  // UTC 필드 = 한국시간
+function lastCut() { const k = kstNow(); const c = Date.UTC(k.getUTCFullYear(), k.getUTCMonth(), k.getUTCDate(), 17) - 9 * 3600e3; return c <= Date.now() ? c : c - 86400e3; }
+async function cachedJson(url, opt = {}) {
+  const key = 'caos-c:' + url;
+  if (!FORCE) { try { const c = JSON.parse(localStorage.getItem(key) || 'null'); if (c && (c.t >= lastCut() || opt.past)) { CACHE_AT = Math.min(CACHE_AT ?? c.t, c.t); return c.d; } } catch (_) {} }
+  const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error('HTTP ' + r.status); const d = await r.json();
+  try { localStorage.setItem(key, JSON.stringify({ t: Date.now(), d })); } catch (_) { try { Object.keys(localStorage).filter(k => k.startsWith('caos-c:')).forEach(k => localStorage.removeItem(k)); } catch (_) {} }
+  return d;
+}
+const cacheDrop = part => { try { Object.keys(localStorage).filter(k => k.startsWith('caos-c:') && k.includes(part)).forEach(k => localStorage.removeItem(k)); } catch (_) {} };
 async function fetchMonth(year, month, force = false) {
   const url = `${API_BASE}?year=${year}&month=${month}`;
-  const res = await fetch(url, { cache: force ? 'no-store' : 'default' });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
+  const k = kstNow(), past = Number(year) * 12 + Number(month) < k.getUTCFullYear() * 12 + k.getUTCMonth() + 1 && k.getUTCDate() > 7;  // 지난달은 7일 이후 고정
+  const json = await cachedJson(url, { past });
   const data = Array.isArray(json) ? json[0] : json;
   if (!data || !data['사업자별']) throw new Error('데이터 형식 오류');
   return data;
@@ -1958,6 +1970,7 @@ function showSubLoading(stateId, contentId, text) {
 
 // ── Load ────────────────────────────────────────────────────────────────
 async function loadData(force = false) {
+  FORCE = !!force; CACHE_AT = null;
   const period = document.getElementById('selPeriod').value;
   const [year, month] = period.split('-');
 
@@ -1975,7 +1988,9 @@ async function loadData(force = false) {
     currentData = data;
     await Promise.all([loadSettle(period), loadDaily(period), loadCost()]);
     // 도매꾹 구매목록 동기화는 느릴 수 있어 화면을 먼저 그린 뒤 뒤에서 갱신
-    syncDome(period).then(() => loadSettle(period)).then(() => { if (document.getElementById('selPeriod').value === period) renderFinancePages(); }).catch(() => {});
+    const domeKey = 'caos-dome-sync:' + period; let domeT = 0; try { domeT = Number(localStorage.getItem(domeKey) || 0); } catch (_) {}
+    if (force || domeT < lastCut()) syncDome(period).then(() => { try { localStorage.setItem(domeKey, String(Date.now())); } catch (_) {} cacheDrop('caos-settle-get'); }).then(() => loadSettle(period)).then(() => { if (document.getElementById('selPeriod').value === period) renderFinancePages(); }).catch(() => {});
+    document.getElementById('periodDisplay').textContent = `${year}.${month}` + (CACHE_AT ? ' · ' + new Date(CACHE_AT + 9 * 3600e3).toISOString().slice(5, 16).replace('T', ' ') + ' 기준 (새로고침=다시 집계)' : ' · 방금 불러옴');
     const vd = viewData();
     render(vd);
     renderFinancePages();
