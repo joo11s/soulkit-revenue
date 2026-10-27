@@ -700,6 +700,13 @@ body.embed .header { display:none; }
 .plat-body { padding:0 10px 10px; display:flex; flex-direction:column; gap:6px; }
 .plat-where { font-size:11px; color:var(--bc); padding:0 2px 2px; }
 .opt { font-style:normal; font-size:10px; color:var(--tx3); border:1px solid var(--bdr2); border-radius:999px; padding:0 6px; margin-left:4px; }
+.col-body > * { flex-shrink:0; }
+.ctab { display:flex; flex-direction:column; gap:4px; }
+.ctab .ch, .ctab .cr { display:grid; grid-template-columns: .9fr 1.2fr .7fr 1.2fr 16px; gap:3px; align-items:center; }
+.ctab .ch span { font-size:10.5px; color:var(--tx3); }
+.ctab .cr input { min-width:0; padding:5px 4px; border-radius:6px; border:1px solid var(--bdr2); background:var(--sur); color:var(--tx); font:inherit; font-size:12px; }
+.ctab .cr input[data-f="cost"] { text-align:right; font-family:'JetBrains Mono',monospace; }
+.ctab .cr button { background:none; border:0; color:var(--tx3); cursor:pointer; }
 .buyrow { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 10px; background:var(--sur2); border:1px solid var(--bdr); border-radius:var(--rs); }
 .buyrow span { display:flex; flex-direction:column; } .buyrow b { font-weight:500; font-size:12.5px; } .buyrow small { color:var(--tx3); font-size:11px; }
 .buyrow em { font-style:normal; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--tx); white-space:nowrap; }
@@ -924,7 +931,7 @@ body.embed .header { display:none; }
     <div class="card">
       <div class="card-header"><span class="card-title">출고 기준 매출 (주문배송 → 매일 17시 자동)</span><span class="total-badge" id="dailyRunAt"></span></div>
       <p class="pnote">송장이 나간(출고된) 상품만 매출로 잡고, 출고 전 취소는 자동으로 빠집니다. 출고 후 취소·반품·환불은 처리된 날짜 기준으로 차감합니다.</p>
-      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">출고 매출</th><th class="num">과세</th><th class="num">면세</th><th class="num">클레임 차감</th><th class="num">직접 입력 손실</th><th class="num">순매출</th></tr></thead><tbody id="shipBody"></tbody></table></div>
+      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">출고 매출</th><th class="num">과세 / 면세</th><th class="num">클레임</th><th class="num">손실 입력</th><th class="num">순매출</th><th class="num">거래처 원가</th></tr></thead><tbody id="shipBody"></tbody></table></div>
       <div id="shipProducts"></div>
     </div>
     <div class="card">
@@ -939,8 +946,8 @@ body.embed .header { display:none; }
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">사업자별 순이익</span></div>
-      <p class="pnote">순이익 = 매출 − 마켓 수수료 − 도매 원가 − 광고비 − 배송비. 아직 연결 안 된 항목은 "연결 전"으로 표시되며, 연결되는 대로 계산에 들어갑니다.</p>
-      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">매출</th><th class="num">마켓 수수료</th><th class="num">도매 원가</th><th class="num">광고비</th><th class="num">배송비</th><th class="num">이익</th></tr></thead><tbody id="profitBody"></tbody></table></div>
+      <p class="pnote">순이익 = 정산액(매출 − 마켓 수수료) − 원가(거래처 원가표 + 도매꾹 매입, 택배·포장 등 부대비용 포함) − 광고비 − 직접 입력 손실. 정산 엑셀을 올리기 전 달은 출고 기록과 평균 수수료율로 "추정"합니다.</p>
+      <div class="table-wrap"><table class="ptable"><thead><tr><th>사업자</th><th class="num">매출</th><th class="num">마켓 수수료</th><th class="num">원가</th><th class="num">광고비</th><th class="num">이익</th></tr></thead><tbody id="profitBody"></tbody></table></div>
     </div>
     <div class="card">
       <div class="card-header"><span class="card-title">항목별 데이터 출처</span></div>
@@ -956,6 +963,7 @@ body.embed .header { display:none; }
       <div class="col-title">자료 업로드 · 세무 자료</div>
       <div class="col-body">
       <div id="bizPanels"></div>
+      <div class="card side-card" id="costPanel"></div>
       <div class="card side-card">
         <div class="card-header"><span class="card-title">두 사업자 합산 (참고용)</span></div>
         <div class="side-body">
@@ -1078,8 +1086,8 @@ function renderShip() {
   T.loss = 0;
   const rows = BIZ_LIST.map(b => { const o = B[b], ml = manualLoss(b); T.loss += ml.amt; if (!o) return `<tr><td>${escHtml(b)}</td><td class="num" colspan="6"><span class="muted">이 달 출고 기록 없음</span></td></tr>`;
     T.sales += o.sales; T.TAX += o.tax.TAX || 0; T.FREE += o.tax.FREE || 0; T.claim += o.claim;
-    return `<tr><td>${escHtml(b)}<div class="muted" style="font-size:11px">${o.lines}건 · ${Object.keys(o.byMarket).join('·')}</div></td><td class="num">${fmt(o.sales)}</td><td class="num">${fmt(o.tax.TAX || 0)}</td><td class="num">${fmt(o.tax.FREE || 0)}</td><td class="num">${o.claim ? '-' + fmt(o.claim) + `<div class="muted" style="font-size:11px">${o.claimN}건</div>` : '0'}</td><td class="num" title="주문배송 → 클레임관리 → 손실·차감 직접 입력">${ml.amt ? '-' + fmt(ml.amt) + `<div class="muted" style="font-size:11px">${ml.n}건</div>` : '0'}</td><td class="num"><b>${fmt(o.sales - o.claim - ml.amt)}</b></td></tr>`; });
-  if (BIZ_LIST.length > 1) rows.push(`<tr><td><b>합계</b></td><td class="num"><b>${fmt(T.sales)}</b></td><td class="num">${fmt(T.TAX)}</td><td class="num">${fmt(T.FREE)}</td><td class="num">${T.claim ? '-' + fmt(T.claim) : '0'}</td><td class="num">${T.loss ? '-' + fmt(T.loss) : '0'}</td><td class="num"><b>${fmt(T.sales - T.claim - T.loss)}</b></td></tr>`);
+    return `<tr><td>${escHtml(b)}<div class="muted" style="font-size:11px">${o.lines}건 · ${Object.keys(o.byMarket).join('·')}</div></td><td class="num">${fmt(o.sales)}</td><td class="num">${fmt(o.tax.TAX || 0)}<div class="muted" style="font-size:11px">면세 ${fmt(o.tax.FREE || 0)}</div></td><td class="num">${o.claim ? '-' + fmt(o.claim) + `<div class="muted" style="font-size:11px">${o.claimN}건</div>` : '0'}</td><td class="num" title="주문배송 → 클레임관리 → 손실·차감 직접 입력">${ml.amt ? '-' + fmt(ml.amt) + `<div class="muted" style="font-size:11px">${ml.n}건</div>` : '0'}</td><td class="num"><b>${fmt(o.sales - o.claim - ml.amt)}</b></td><td class="num">${fmt(o.cost || 0)}${(o.uncosted || []).length ? `<div style="font-size:11px;color:var(--red)">미등록 ${o.uncosted.length}종</div>` : ''}</td></tr>`; });
+  if (BIZ_LIST.length > 1) rows.push(`<tr><td><b>합계</b></td><td class="num"><b>${fmt(T.sales)}</b></td><td class="num">${fmt(T.TAX)}<div class="muted" style="font-size:11px">면세 ${fmt(T.FREE)}</div></td><td class="num">${T.claim ? '-' + fmt(T.claim) : '0'}</td><td class="num">${T.loss ? '-' + fmt(T.loss) : '0'}</td><td class="num"><b>${fmt(T.sales - T.claim - T.loss)}</b></td><td class="num">${fmt(BIZ_LIST.reduce((a, b) => a + ((B[b] && B[b].cost) || 0), 0))}</td></tr>`);
   body.innerHTML = rows.join('');
   const prods = []; BIZ_LIST.forEach(b => (B[b]?.byProduct || []).forEach(p => prods.push(Object.assign({ b }, p))));
   prods.sort((a, c) => c.amt - a.amt);
@@ -1126,7 +1134,7 @@ const PARSERS = {
     parse(aoa) {
       const H = aoa[0].map(x => String(x ?? '').trim()), ix = k => H.indexOf(k);
       const S = { sales: 0, ship: 0, fee: 0, settle: 0, refund: 0, refundCnt: 0, tax: { TAX: { sales: 0, settle: 0 }, FREE: { sales: 0, settle: 0 } } };
-      const orders = {}, months = {}; let cur = 'TAX';
+      const orders = {}, months = {}, prods = {}; let cur = 'TAX';
       aoa.slice(1).forEach(r => {
         const no = String(r[ix('주문번호')] ?? '').trim(); if (!no) return;
         const type = String(r[ix('과세유형')] ?? '').trim(); const isProd = !!type; if (isProd) cur = type === 'FREE' ? 'FREE' : 'TAX';
@@ -1136,8 +1144,10 @@ const PARSERS = {
         S.tax[cur].sales += sale; S.tax[cur].settle += st;
         const d = String(r[ix('구매확정일')] ?? '').slice(0, 7); if (isProd && /^\d{4}-\d{2}$/.test(d)) months[d] = (months[d] || 0) + 1;
         const o = orders[no] || (orders[no] = [no, 0, 0, String(r[ix('구매확정일')] ?? '')]); o[1] += sale; o[2] += st;
+        if (isProd) { const nm = String(r[ix('상품명')] ?? '').trim(), op = String(r[ix('옵션명')] ?? '').trim(), k = nm + '|' + op;
+          const pr = prods[k] || (prods[k] = { name: nm, opt: op, qty: 0, sales: 0, fee: 0, settle: 0 }); pr.qty += numv(r[ix('판매수량')]) + numv(r[ix('환불수량')]); pr.sales += sale; pr.fee += fee; pr.settle += st; }
       });
-      S.orders = Object.keys(orders).length;
+      S.orders = Object.keys(orders).length; S.products = Object.values(prods);
       const month = Object.entries(months).sort((a, b) => b[1] - a[1])[0]?.[0] || null;
       return { month, summary: S, orders: Object.values(orders) };
     }
@@ -1174,25 +1184,75 @@ function renderSettle() {
     <td class="num" title="카페24 매출 − 마켓 판매액(배송비 포함). 카페24는 주문일·실결제, 쿠팡은 구매확정일 기준이라 차이가 날 수 있습니다">${diff == null ? '<span class="muted">—</span>' : (diff > 0 ? '+' : '') + fmt(Math.round(diff))}</td></tr>`; }).join('');
   const p = document.getElementById('selPeriod').value; document.getElementById('settleBadge').textContent = p.replace('-', '.');
 }
-function bizCost(b) {  // 사업자별 올린 자료 합계
-  const r = { settle: 0, fee: 0, ads: 0, free: 0, plats: [], cost: 0, costN: 0 };
-  const pu = stItem(b, 'domeggook', 'purchase'); if (pu && pu.summary) { r.cost += pu.summary.cost || 0; r.costN += pu.summary.orders || 0; }
+// ── 거래처 원가표 (서버 n8n에 저장, 출고 기록 원가 계산과 같은 규칙) ──
+let COST_TABLE = [], COST_UPDATED = '';
+async function loadCost() { try { const j = await fetch(SETTLE_API + 'caos-cost', { cache: 'no-store' }).then(r => r.json()); COST_TABLE = j.items || []; COST_UPDATED = j.updated || ''; } catch (_) {} }
+const FEE_EST = { '쿠팡': 0.115, '네이버': 0.055, '11번가': 0.13, 'G마켓': 0.13, '옥션': 0.13, '롯데ON': 0.12, '토스쇼핑': 0.1 };
+const unitOf = s => { const m = String(s || '').match(/(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)\b/i); if (!m) return null; let v = Number(m[1]), u = m[2].toLowerCase(); if (u === 'kg') { v *= 1000; u = 'g'; } if (u === 'l') { v *= 1000; u = 'ml'; } if (u === '입') u = '구'; return { v, u }; };
+const optUnit = (opt, u) => { const re = /(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)(?![a-z])/gi; let m; while ((m = re.exec(String(opt || '')))) { let v = Number(m[1]), uu = m[2].toLowerCase(); if (uu === 'kg') { v *= 1000; uu = 'g'; } if (uu === 'l') { v *= 1000; uu = 'ml'; } if (uu === '입') uu = '구'; if (uu === u) return v; } return null; };
+const packOf = opt => { const m = String(opt || '').match(/(\d+)\s*(개|팩|세트|박스)(?!\s*입)/); const n = m ? Number(m[1]) : 1; return n > 0 && n < 100 ? n : 1; };
+function costLine(name, opt, qty) {  // 원가표로 한 줄 원가 계산 (못 찾으면 null)
+  const hay = (name + ' ' + (opt || '')).replace(/\s+/g, ' ');
+  const t = COST_TABLE.find(t => String(t.key).trim().split(/[\s,]+/).every(k => hay.includes(k))); if (!t) return null;
+  const base = unitOf(t.unit); let ratio = 1; if (base) { const ov = optUnit(opt, base.u); if (ov) ratio = ov / base.v; }
+  return Math.round(qty * packOf(opt) * ratio * Number(t.cost));
+}
+function bizCost(b) {  // 사업자별 매출·수수료·원가·광고비·손실 (정산 엑셀이 있으면 실제, 없으면 출고 기록으로 추정)
+  const r = { settle: 0, fee: 0, ads: 0, free: 0, plats: [], cost: 0, costN: 0, domeCost: 0, supCost: 0, unc: [], est: false, base: 0 };
+  const pu = stItem(b, 'domeggook', 'purchase'); if (pu && pu.summary) { r.domeCost = pu.summary.cost || 0; r.costN = pu.summary.orders || 0; }
   r.loss = manualLoss(b).amt;
-  PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { r.settle += it.summary.settle || 0; r.fee += it.summary.fee || 0; r.free += it.summary.tax?.FREE?.sales || 0; r.plats.push(pf.label || pf.m); }
+  let fileCost = 0, fileUnc = [];
+  PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { r.settle += it.summary.settle || 0; r.fee += it.summary.fee || 0; r.free += it.summary.tax?.FREE?.sales || 0; r.plats.push(pf.label || pf.m);
+      (it.summary.products || []).forEach(p => { const c = costLine(p.name, p.opt, p.qty); if (c == null) { if (!/페리오|칫솔|치약/.test(p.name)) fileUnc.push({ name: p.name, qty: p.qty, amt: p.sales }); } else fileCost += c; }); }
     const ad = stItem(b, pf.k, 'ads'); if (ad && ad.value) r.ads += Math.round(ad.value / 1.1); });
+  const d = DAILY && DAILY.biz && DAILY.biz[b];
+  if (d) { r.supCost = d.cost || 0; r.unc = d.uncosted || []; } else { r.supCost = fileCost; r.unc = fileUnc; }
+  r.cost = r.domeCost + r.supCost;
+  if (!r.plats.length && d) {  // 정산 엑셀 전: 출고 기록 기준 추정
+    r.est = true; r.base = d.sales - d.claim;
+    r.fee = Object.entries(d.byMarket || {}).reduce((a, [m, v]) => a + v * (FEE_EST[m] ?? 0.12), 0) * (r.base / (d.sales || 1));
+    r.settle = r.base - r.fee;
+  }
   return r;
 }
 function renderProfit() {
   const body = document.getElementById('profitBody'); if (!body) return;
   const biz = (currentData && currentData['사업자별']) || {};
-  const pend = '<span class="muted">연결 전</span>';
-  const T = { gross: 0, fee: 0, ads: 0, profit: 0, any: false };
-  const row = (name, gross, c, last) => `<tr><td>${last ? '<b>합계</b>' : escHtml(name)}${!last && c.plats.length ? `<div class="muted" style="font-size:11px">${escHtml(c.plats.join('·'))} 자료</div>` : ''}</td><td class="num">${wonCell(gross)}</td>
-    <td class="num">${c.plats.length ? fmt(Math.round(c.fee)) : pend}</td><td class="num">${c.cost ? fmt(Math.round(c.cost)) : '0'}<div class="muted" style="font-size:11px">도매꾹 ${c.costN}건 · 거래처 매입 전</div></td><td class="num">${c.ads ? fmt(c.ads) : (c.plats.length ? '0' : pend)}</td><td class="num">${pend}</td>
-    <td class="num">${c.plats.length ? `<b>${fmt(Math.round(c.settle - c.ads - c.cost - (c.loss || 0)))}</b><div class="muted" style="font-size:11px">${c.loss ? '손실 ' + fmt(c.loss) + ' 차감 · ' : ''}거래처 매입 반영 전</div>` : pend}</td></tr>`;
-  const agg = { settle: 0, fee: 0, ads: 0, plats: [], cost: 0, costN: 0, loss: 0 };
-  body.innerHTML = BIZ_LIST.map(b => { const v = biz[b]?.['사업자합계'] ?? null; T.gross += Number(v) || 0; const c = bizCost(b);
-    agg.settle += c.settle; agg.fee += c.fee; agg.ads += c.ads; agg.cost += c.cost; agg.costN += c.costN; agg.loss += c.loss || 0; if (c.plats.length) agg.plats.push(b); return row(b, v, c); }).join('') + row('합계', T.gross, agg, true);
+  const pend = '<span class="muted">연결 전</span>', sm = t => `<div class="muted" style="font-size:11px">${t}</div>`;
+  const row = (name, gross, c, last) => { const has = c.plats.length || c.est; const profit = c.settle - c.ads - c.cost - (c.loss || 0);
+    return `<tr><td>${last ? '<b>합계</b>' : escHtml(name)}${!last ? sm(c.plats.length ? escHtml(c.plats.join('·')) + ' 정산 엑셀 기준' : c.est ? '출고 기록 기준 추정' : '') : ''}</td><td class="num">${wonCell(gross)}</td>
+    <td class="num">${has ? fmt(Math.round(c.fee)) + (c.est ? sm('추정') : '') : pend}</td>
+    <td class="num">${fmt(Math.round(c.cost))}${sm('거래처 ' + fmt(Math.round(c.supCost)))}${sm('도매꾹 ' + fmt(Math.round(c.domeCost)))}${c.unc && c.unc.length ? `<div style="font-size:11px;color:var(--red)">미등록 ${c.unc.length}종</div>` : ''}</td>
+    <td class="num">${c.ads ? fmt(c.ads) : (has ? '0' : pend)}</td>
+    <td class="num">${has ? `<b>${fmt(Math.round(profit))}</b>${sm((c.loss ? '손실 ' + fmt(c.loss) + ' 차감 · ' : '') + (c.unc && c.unc.length ? '미등록 제외' : '원가 반영'))}` : pend}</td></tr>`; };
+  const agg = { settle: 0, fee: 0, ads: 0, plats: [], cost: 0, costN: 0, loss: 0, supCost: 0, domeCost: 0, unc: [], est: false };
+  let T = 0;
+  body.innerHTML = BIZ_LIST.map(b => { const v = biz[b]?.['사업자합계'] ?? null; T += Number(v) || 0; const c = bizCost(b);
+    ['settle', 'fee', 'ads', 'cost', 'costN', 'loss', 'supCost', 'domeCost'].forEach(k => agg[k] += c[k] || 0); agg.unc = agg.unc.concat(c.unc || []); if (c.plats.length) agg.plats.push(b); if (c.est) agg.est = true;
+    return row(b, v, c); }).join('') + (BIZ_LIST.length > 1 ? row('합계', T, agg, true) : '');
+  renderCostPanel();
+}
+function renderCostPanel() {
+  const box = document.getElementById('costPanel'); if (!box) return;
+  const unc = {}; BIZ_LIST.forEach(b => (bizCost(b).unc || []).forEach(u => { const k = u.name; unc[k] = unc[k] || { name: k, qty: 0, amt: 0 }; unc[k].qty += u.qty; unc[k].amt += u.amt; }));
+  const uncL = Object.values(unc).sort((a, b) => b.amt - a.amt);
+  box.innerHTML = `<div class="card-header"><span class="card-title">거래처 원가표 (두 사업자 공통)</span><span class="total-badge">${COST_UPDATED ? '수정 ' + escHtml(COST_UPDATED.slice(5, 16)) : ''}</span></div>
+    <div class="side-body">
+      <div class="side-label">상품명에 들어 있는 단어로 찾습니다. 원가는 부대비용(포장·인건비·택배·부자재) 포함 1단위 금액. 단위를 적으면 옵션의 중량·구수에 맞춰 배수로 계산합니다(예: 기준 500g, 옵션 1kg → 2배).</div>
+      <div class="ctab"><div class="ch"><span>찾을 단어</span><span>품목</span><span>기준 단위</span><span>원가</span><span></span></div>
+        ${COST_TABLE.map((t, i) => `<div class="cr" data-ci="${i}"><input data-f="key" value="${escHtml(t.key)}"><input data-f="label" value="${escHtml(t.label || '')}"><input data-f="unit" value="${escHtml(t.unit || '')}" placeholder="500g"><input data-f="cost" inputmode="numeric" value="${fmt(t.cost)}"><button type="button" data-cdel="${i}" title="삭제">✕</button></div>`).join('')}
+      </div>
+      <div style="display:flex;gap:6px"><button class="side-btn" id="costAdd" style="flex:1">+ 행 추가</button><button class="side-btn primary" id="costSave" style="flex:1;margin-top:0">원가표 저장</button></div>
+      ${uncL.length ? `<div class="side-label" style="color:var(--red)">원가 미등록 상품 (이번 달 판매분)</div>${uncL.slice(0, 12).map(u => `<div class="buyrow"><span><b title="${escHtml(u.name)}" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${escHtml(u.name)}</b><small>${fmt(u.qty)}개 · ${fmt(Math.round(u.amt))}원</small></span><button type="button" class="side-btn" style="width:auto;padding:4px 10px" data-cadd="${escHtml(u.name)}">원가 넣기</button></div>`).join('')}` : '<div class="side-label" style="color:#86efac">이번 달 판매 상품은 모두 원가가 등록되어 있습니다</div>'}
+    </div>`;
+  const read = () => [...box.querySelectorAll('.cr')].map((row, i) => { const v = f => row.querySelector(`[data-f="${f}"]`).value.trim(); return { id: COST_TABLE[i]?.id, key: v('key'), label: v('label'), unit: v('unit'), cost: numv(v('cost')), note: COST_TABLE[i]?.note || '부대비용 포함' }; });
+  box.querySelector('#costAdd').onclick = () => { COST_TABLE = read(); COST_TABLE.push({ key: '', label: '', unit: '', cost: 0 }); renderCostPanel(); };
+  box.querySelectorAll('[data-cdel]').forEach(x => x.onclick = () => { COST_TABLE = read(); COST_TABLE.splice(Number(x.dataset.cdel), 1); renderCostPanel(); });
+  box.querySelectorAll('[data-cadd]').forEach(x => x.onclick = () => { COST_TABLE = read(); const w = x.dataset.cadd.replace(/[\[\]()]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).join(' '); COST_TABLE.push({ key: w, label: x.dataset.cadd.slice(0, 30), unit: '', cost: 0 }); renderCostPanel(); });
+  box.querySelector('#costSave').onclick = async () => { const items = read().filter(t => t.key && t.cost > 0); const btn = box.querySelector('#costSave'); btn.disabled = true; btn.textContent = '저장 중…';
+    try { const j = await fetch(SETTLE_API + 'caos-cost', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items }) }).then(r => r.json()); COST_TABLE = j.items || items; COST_UPDATED = j.updated || '';
+      await loadDaily(document.getElementById('selPeriod').value); renderFinancePages(); }
+    catch (e) { alert('저장하지 못했습니다: ' + e.message); btn.disabled = false; btn.textContent = '원가표 저장'; } };
 }
 function taxRows(list) {  // 면세(쿠팡 등 올린 자료의 FREE 판매액)는 부가세 계산에서 뺌
   const biz = (currentData && currentData['사업자별']) || {};
@@ -1227,7 +1287,7 @@ function renderBizPanels() {
         <div class="side-label">매입 (원가)</div>
         ${(() => { const pu = stItem(b, 'domeggook', 'purchase'), S = pu && pu.summary;
           return `<div class="buyrow"><span><b>도매꾹 위탁 매입</b><small>구매목록에서 자동 · 구매취소 제외</small></span><em>${S ? fmt(Math.round(S.cost)) + '원 · ' + S.orders + '건' : '0원'}</em></div>${S && S.orders ? `<div class="buydet">주문금액 ${fmt(Math.round(S.goods))}원 + 별도 택배비 ${fmt(Math.round(S.ship))}원 = 결제 기준${DOME_NOTE[b] ? ' · <span style="color:var(--red)">' + escHtml(DOME_NOTE[b]) + '</span>' : ''}</div>` : (DOME_NOTE[b] ? `<div class="buydet" style="color:var(--red)">${escHtml(DOME_NOTE[b])}</div>` : '')}
-          <div class="buyrow muted"><span><b>거래처 매입 (식품 등 오프라인)</b><small>거래명세표 입력 — 준비 중</small></span><em>—</em></div>`; })()}
+          ${(() => { const c = bizCost(b); return `<div class="buyrow"><span><b>거래처 원가 (식품 등)</b><small>출고 수량 × 원가표 · 부대비용 포함</small></span><em>${fmt(Math.round(c.supCost))}원</em></div>${c.unc.length ? `<div class="buydet" style="color:var(--red)">원가 미등록 ${c.unc.length}종 — 아래 원가표에서 넣기</div>` : ''}`; })()}`; })()}
         <div class="side-label">세무 자료</div>
         <div class="taxmini"><span>매출</span><b>${fmt(gross) || 0}</b><span>공급가액</span><b>${fmt(supply) || 0}</b><span>면세(올린 자료)</span><b>${fmt(tr.free) || 0}</b><span>부가세</span><b>${fmt(tr.vat) || 0}</b></div>
         <button class="side-btn primary" onclick="exportTax('${escHtml(b)}')">${escHtml(b)} 세무 자료 엑셀</button>
@@ -1914,7 +1974,7 @@ async function loadData(force = false) {
     const data = await fetchMonth(year, month, force);
     currentData = data;
     await loadSettle(period);
-    await syncDome(period); await Promise.all([loadSettle(period), loadDaily(period)]);
+    await syncDome(period); await Promise.all([loadSettle(period), loadDaily(period), loadCost()]);
     const vd = viewData();
     render(vd);
     renderFinancePages();
