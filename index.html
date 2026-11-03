@@ -702,7 +702,7 @@ body.embed .header { display:none; }
 .opt { font-style:normal; font-size:10px; color:var(--tx3); border:1px solid var(--bdr2); border-radius:999px; padding:0 6px; margin-left:4px; }
 .col-body > * { flex-shrink:0; }
 .ctab { display:flex; flex-direction:column; gap:4px; }
-.ctab .ch, .ctab .cr { display:grid; grid-template-columns: .9fr 1.2fr .7fr 1.2fr 16px; gap:3px; align-items:center; }
+.ctab .ch, .ctab .cr { display:grid; grid-template-columns: .8fr 1.1fr .6fr 1fr 1.25fr 16px; gap:3px; align-items:center; }
 .ctab .ch span { font-size:10.5px; color:var(--tx3); }
 .ctab .cr input { min-width:0; padding:5px 4px; border-radius:6px; border:1px solid var(--bdr2); background:var(--sur); color:var(--tx); font:inherit; font-size:12px; }
 .ctab .cr input[data-f="cost"] { text-align:right; font-family:'JetBrains Mono',monospace; }
@@ -1192,9 +1192,15 @@ const FEE_EST = { '쿠팡': 0.115, '네이버': 0.055, '11번가': 0.13, 'G마�
 const unitOf = s => { const m = String(s || '').match(/(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)\b/i); if (!m) return null; let v = Number(m[1]), u = m[2].toLowerCase(); if (u === 'kg') { v *= 1000; u = 'g'; } if (u === 'l') { v *= 1000; u = 'ml'; } if (u === '입') u = '구'; return { v, u }; };
 const optUnit = (opt, u) => { const re = /(\d+(?:\.\d+)?)\s*(kg|g|구|입|ml|l)(?![a-z])/gi; let m; while ((m = re.exec(String(opt || '')))) { let v = Number(m[1]), uu = m[2].toLowerCase(); if (uu === 'kg') { v *= 1000; uu = 'g'; } if (uu === 'l') { v *= 1000; uu = 'ml'; } if (uu === '입') uu = '구'; if (uu === u) return v; } return null; };
 const packOf = opt => { const m = String(opt || '').match(/(\d+)\s*(개|팩|세트|박스)(?!\s*입)/); const n = m ? Number(m[1]) : 1; return n > 0 && n < 100 ? n : 1; };
-function costLine(name, opt, qty) {  // 원가표로 한 줄 원가 계산 (못 찾으면 null)
+function pickCostRow(hay, date) { // 같은 단어 줄이 여럿이면 그 날짜에 유효한(적용 시작일이 가장 늦은) 원가
+    const m = COST_TABLE.filter(t => t.key && String(t.key).trim().split(/[\s,]+/).every(k => hay.includes(k))); if (!m.length) return null;
+    const k0 = String(m[0].key).trim(), same = m.filter(t => String(t.key).trim() === k0);
+    const ok = same.filter(t => !t.from || !date || t.from <= date).sort((a, b) => String(b.from || '').localeCompare(String(a.from || '')));
+    return ok[0] || same.slice().sort((a, b) => String(a.from || '').localeCompare(String(b.from || '')))[0];
+  }
+  function costLine(name, opt, qty, date) {  // 원가표로 한 줄 원가 계산 (못 찾으면 null)
   const hay = (name + ' ' + (opt || '')).replace(/\s+/g, ' ');
-  const t = COST_TABLE.find(t => String(t.key).trim().split(/[\s,]+/).every(k => hay.includes(k))); if (!t) return null;
+  const t = pickCostRow(hay, date); if (!t) return null;
   const base = unitOf(t.unit); let ratio = 1; if (base) { const ov = optUnit(opt, base.u); if (ov) ratio = ov / base.v; }
   return Math.round(qty * packOf(opt) * ratio * Number(t.cost));
 }
@@ -1204,7 +1210,7 @@ function bizCost(b) {  // 사업자별 매출·수수료·원가·광고비·손
   r.loss = manualLoss(b).amt;
   let fileCost = 0, fileUnc = [];
   PLATFORMS.forEach(pf => { const it = stItem(b, pf.k, 'sales'); if (it && it.summary) { r.settle += it.summary.settle || 0; r.fee += it.summary.fee || 0; r.free += it.summary.tax?.FREE?.sales || 0; r.plats.push(pf.label || pf.m);
-      (it.summary.products || []).forEach(p => { const c = costLine(p.name, p.opt, p.qty); if (c == null) { if (!/페리오|칫솔|치약/.test(p.name)) fileUnc.push({ name: p.name, qty: p.qty, amt: p.sales }); } else fileCost += c; }); }
+      (it.summary.products || []).forEach(p => { const c = costLine(p.name, p.opt, p.qty, (document.getElementById('selPeriod')?.value || '') + '-01'); if (c == null) { if (!/페리오|칫솔|치약/.test(p.name)) fileUnc.push({ name: p.name, qty: p.qty, amt: p.sales }); } else fileCost += c; }); }
     const ad = stItem(b, pf.k, 'ads'); if (ad && ad.value) r.ads += Math.round(ad.value / 1.1); });
   const d = DAILY && DAILY.biz && DAILY.biz[b];
   if (d) { r.supCost = d.cost || 0; r.unc = d.uncosted || []; } else { r.supCost = fileCost; r.unc = fileUnc; }
@@ -1239,15 +1245,15 @@ function renderCostPanel() {
   const uncL = Object.values(unc).sort((a, b) => b.amt - a.amt);
   box.innerHTML = `<div class="card-header"><span class="card-title">거래처 원가표 (두 사업자 공통)</span><span class="total-badge">${COST_UPDATED ? '수정 ' + escHtml(COST_UPDATED.slice(5, 16)) : ''}</span></div>
     <div class="side-body">
-      <div class="side-label">상품명에 들어 있는 단어로 찾습니다. 원가는 부대비용(포장·인건비·택배·부자재) 포함 1단위 금액. 단위를 적으면 옵션의 중량·구수에 맞춰 배수로 계산합니다(예: 기준 500g, 옵션 1kg → 2배).</div>
-      <div class="ctab"><div class="ch"><span>찾을 단어</span><span>품목</span><span>기준 단위</span><span>원가</span><span></span></div>
-        ${COST_TABLE.map((t, i) => `<div class="cr" data-ci="${i}"><input data-f="key" value="${escHtml(t.key)}"><input data-f="label" value="${escHtml(t.label || '')}"><input data-f="unit" value="${escHtml(t.unit || '')}" placeholder="500g"><input data-f="cost" inputmode="numeric" value="${fmt(t.cost)}"><button type="button" data-cdel="${i}" title="삭제">✕</button></div>`).join('')}
+      <div class="side-label">상품명에 들어 있는 단어로 찾습니다. 원가는 부대비용(포장·인건비·택배·부자재) 포함 1단위 금액. 단위를 적으면 옵션의 중량·구수에 맞춰 배수로 계산합니다(예: 기준 500g, 옵션 1kg → 2배). 단가가 바뀌면 기존 줄은 그대로 두고 같은 단어로 줄을 하나 더 넣어 적용 시작일을 적으세요 — 출고일 기준으로 맞는 원가가 들어가 지난 달 숫자는 바뀌지 않습니다(시작일이 비어 있으면 처음부터).</div>
+      <div class="ctab"><div class="ch"><span>찾을 단어</span><span>품목</span><span>기준 단위</span><span>원가</span><span>적용 시작</span><span></span></div>
+        ${COST_TABLE.map((t, i) => `<div class="cr" data-ci="${i}"><input data-f="key" value="${escHtml(t.key)}"><input data-f="label" value="${escHtml(t.label || '')}"><input data-f="unit" value="${escHtml(t.unit || '')}" placeholder="500g"><input data-f="cost" inputmode="numeric" value="${fmt(t.cost)}"><input data-f="from" type="date" value="${escHtml(t.from || '')}" title="비우면 처음부터 적용"><button type="button" data-cdel="${i}" title="삭제">✕</button></div>`).join('')}
       </div>
       <div style="display:flex;gap:6px"><button class="side-btn" id="costAdd" style="flex:1">+ 행 추가</button><button class="side-btn primary" id="costSave" style="flex:1;margin-top:0">원가표 저장</button></div>
       ${uncL.length ? `<div class="side-label" style="color:var(--red)">원가 미등록 상품 (이번 달 판매분)</div>${uncL.slice(0, 12).map(u => `<div class="buyrow"><span><b title="${escHtml(u.name)}" style="max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block">${escHtml(u.name)}</b><small>${fmt(u.qty)}개 · ${fmt(Math.round(u.amt))}원</small></span><button type="button" class="side-btn" style="width:auto;padding:4px 10px" data-cadd="${escHtml(u.name)}">원가 넣기</button></div>`).join('')}` : '<div class="side-label" style="color:#86efac">이번 달 판매 상품은 모두 원가가 등록되어 있습니다</div>'}
     </div>`;
-  const read = () => [...box.querySelectorAll('.cr')].map((row, i) => { const v = f => row.querySelector(`[data-f="${f}"]`).value.trim(); return { id: COST_TABLE[i]?.id, key: v('key'), label: v('label'), unit: v('unit'), cost: numv(v('cost')), note: COST_TABLE[i]?.note || '부대비용 포함' }; });
-  box.querySelector('#costAdd').onclick = () => { COST_TABLE = read(); COST_TABLE.push({ key: '', label: '', unit: '', cost: 0 }); renderCostPanel(); };
+  const read = () => [...box.querySelectorAll('.cr')].map((row, i) => { const v = f => row.querySelector(`[data-f="${f}"]`).value.trim(); return { id: COST_TABLE[i]?.id, key: v('key'), label: v('label'), unit: v('unit'), cost: numv(v('cost')), from: v('from'), note: COST_TABLE[i]?.note || '부대비용 포함' }; });
+  box.querySelector('#costAdd').onclick = () => { COST_TABLE = read(); COST_TABLE.push({ key: '', label: '', unit: '', cost: 0, from: '' }); renderCostPanel(); };
   box.querySelectorAll('[data-cdel]').forEach(x => x.onclick = () => { COST_TABLE = read(); COST_TABLE.splice(Number(x.dataset.cdel), 1); renderCostPanel(); });
   box.querySelectorAll('[data-cadd]').forEach(x => x.onclick = () => { COST_TABLE = read(); const w = x.dataset.cadd.replace(/[\[\]()]/g, ' ').split(/\s+/).filter(Boolean).slice(0, 2).join(' '); COST_TABLE.push({ key: w, label: x.dataset.cadd.slice(0, 30), unit: '', cost: 0 }); renderCostPanel(); });
   box.querySelector('#costSave').onclick = async () => { const items = read().filter(t => t.key && t.cost > 0); const btn = box.querySelector('#costSave'); btn.disabled = true; btn.textContent = '저장 중…';
